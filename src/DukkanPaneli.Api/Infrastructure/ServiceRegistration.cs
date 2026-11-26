@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using DukkanPaneli.Api.Common;
 using DukkanPaneli.Api.Data;
 using DukkanPaneli.Api.Features.Admin;
+using DukkanPaneli.Api.Features.Assistant;
 using DukkanPaneli.Api.Features.Auth;
 using DukkanPaneli.Api.Features.Calendar;
 using DukkanPaneli.Api.Features.Catalog;
@@ -56,6 +57,9 @@ public static class ServiceRegistration
         services.AddScoped<ReportService>();
         services.AddScoped<AdminService>();
         services.AddScoped<DemoDataService>();
+        services.AddScoped<ShopSnapshotService>();
+        services.AddScoped<AssistantService>();
+        services.AddSingleton<IAssistantModel, ClaudeAssistantModel>(); // testler sahte bir modelle değiştirir
         services.AddSingleton<AutoBackupService>();
         services.AddHostedService(sp => sp.GetRequiredService<AutoBackupService>()); // günlük otomatik yedek
         return services;
@@ -72,6 +76,7 @@ public static class ServiceRegistration
         app.MapHistoryEndpoints();
         app.MapReportEndpoints();
         app.MapAdminEndpoints();
+        app.MapAssistantEndpoints();
         app.MapFallback("/api/{**rest}", () => HttpResults.Fail("Bulunamadı.", StatusCodes.Status404NotFound));
     }
 }

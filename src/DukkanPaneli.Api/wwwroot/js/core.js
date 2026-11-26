@@ -98,7 +98,8 @@ let currentView = null;
 const isOwner = () => state?.me?.role === 'Sahip';
 
 async function reload() {
-  state = await api('GET', '/api/bootstrap');
+  // Sunucu varsayılan olarak son 12 ayın gelir-giderini gönderir; daha eski bir dönem açıldıysa (ui.cashFrom) onu da ister.
+  state = await api('GET', '/api/bootstrap' + (ui.cashFrom ? `?cashFrom=${ui.cashFrom}` : ''));
   // Sepette artık olmayan ürünleri temizle.
   ui.cart = ui.cart.filter(c => state.products.some(p => p.id === c.productId));
 }
@@ -112,8 +113,10 @@ const ui = {
   calMonth: monthOf(todayISO()), calSelected: todayISO(),
   cart: store.get(CART_KEY, []), posQuery: '', posCat: '', posPay: 'Nakit', posCustomer: '', posDue: '', posDiscount: '', posNote: '', posDate: '',
   movType: '',
+  cashFrom: '', // eldeki gelir-gider penceresinin genişletildiği en eski tarih (boşsa sunucu varsayılanı)
   hist: { from: '', to: '', user: '', q: '', page: 1, open: {} },
   notifs: [],
+  chat: [], chatBusy: false, // asistan sohbeti (sadece bu sekmede tutulur)
 };
 const saveCart = () => store.set(CART_KEY, ui.cart);
 
@@ -128,6 +131,16 @@ const monthRange = key => { const [y, m] = key.split('-').map(Number); return { 
 function monthTotals(key, untilDay) {
   const r = monthRange(key);
   return totalsFor(r.from, untilDay ? `${key}-${pad(untilDay)}` : r.to);
+}
+/**
+ * Gelir-gider listesi [from, …] aralığını kapsamıyorsa pencereyi genişletip yeniden yükler ve true döndürür.
+ * Kullanım: if (await ensureCash(from)) ...; görünümler bunu çizimden önce çağırır.
+ */
+async function ensureCash(from) {
+  if (!isOwner() || !state.cashFrom || from >= state.cashFrom) return false;
+  ui.cashFrom = from;
+  await reload();
+  return true;
 }
 const openDebts = kind => (state.debts || []).filter(d => d.kind === kind && d.remaining > 0);
 const isOverdue = d => d.remaining > 0 && d.dueDate && d.dueDate < todayISO();
@@ -195,6 +208,7 @@ function perToolbar(k) {
 /* ---------- Görünümler ve yönlendirme ---------- */
 const VIEWS = {
   dashboard: { title: 'Genel Bakış', owner: true, render: () => renderDashboard() },
+  asistan: { title: 'Asistan', owner: true, render: () => renderAssistant() },
   satis: { title: 'Satış', render: () => renderPos() },
   satislar: { title: 'Satışlar & Fişler', render: () => renderSales() },
   finans: { title: 'Gelir & Gider', owner: true, render: () => renderFinance() },

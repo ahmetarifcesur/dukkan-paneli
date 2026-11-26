@@ -13,8 +13,11 @@ function filteredTx() {
 }
 function renderFinance() {
   const r = perRange('fin');
+  const pr = perPrev('fin');
+  // Seçilen dönem (ya da karşılaştırılan önceki dönem) elimizdeki veriden eskiyse önce onu yükle.
+  if (isOwner() && state.cashFrom && pr.from < state.cashFrom) return ensureCash(pr.from).then(() => renderFinance());
   const t = totalsFor(r.from, r.to);
-  const pr = perPrev('fin'), prev = totalsFor(pr.from, pr.to);
+  const prev = totalsFor(pr.from, pr.to);
   const pl = PER_PREV[ui.periods.fin.mode];
   const segBtn = (v, l) => `<button class="${ui.finType === v ? 'on' : ''}" data-action="fin-type" data-type="${v}">${l}</button>`;
   return `
@@ -332,4 +335,73 @@ async function renderSettings() {
         <div class="btn-row"><button class="btn" data-action="reset-demo">Örnek verileri yükle</button><button class="btn danger-soft" data-action="clear-all">Tüm verileri sil</button></div>
       </div>` : ''}
     </div>`;
+}
+
+/* ----- Asistan ----- */
+const ASSISTANT_SUGGESTIONS = [
+  'Bu ay geçen aya göre nasıl gidiyor?',
+  'Hangi ürünlerden sipariş vermeliyim?',
+  'Kârı artırmak için ne önerirsin?',
+  'Geciken alacaklarım ve borçlarım neler?',
+  'Satmayan ya da az satan ürünler hangileri?',
+];
+
+async function renderAssistant() {
+  ui.assistantStatus ??= await api('GET', '/api/assistant/status');
+  const st = ui.assistantStatus;
+  if (!st.enabled) return `
+    <div class="card assistant-setup">
+      <h3>Asistan henüz kurulmadı</h3>
+      <p>Asistan sorularınızı yapay zekâ ile (Claude) cevaplar. Kullanmak için sunucuda bir API anahtarı tanımlanmalı:</p>
+      <ol>
+        <li><b>console.anthropic.com</b> adresinde hesap açın, ödeme yöntemi ekleyin ve isterseniz aylık harcama sınırı koyun.</li>
+        <li><b>API Keys</b> bölümünden yeni bir anahtar oluşturun.</li>
+        <li>Anahtarı sunucuda <code>ANTHROPIC_API_KEY</code> ortam değişkeni olarak tanımlayıp uygulamayı yeniden başlatın.</li>
+      </ol>
+      <p class="muted">Anahtar sadece sunucuda durur, tarayıcıya gönderilmez. Her soru küçük bir ücretle faturalanır.</p>
+    </div>`;
+  const msgs = ui.chat.map(m => `<div class="chat-msg ${m.role}${m.error ? ' error' : ''}"><div class="chat-bubble">${esc(m.text)}</div></div>`).join('');
+  return `
+    <div class="assistant">
+      <div class="card assistant-chat">
+        <div class="chat-log" id="chat-log" aria-live="polite">
+          ${msgs || `<div class="chat-empty"><p>Dükkanınızla ilgili bir soru sorun. Asistan güncel satış, stok, kasa ve borç-alacak özetini okuyarak cevaplar.</p>
+            <div class="chips">${ASSISTANT_SUGGESTIONS.map(s => `<button class="chip" data-action="assistant-suggest" data-q="${esc(s)}">${esc(s)}</button>`).join('')}</div></div>`}
+          ${ui.chatBusy ? '<div class="chat-msg assistant"><div class="chat-bubble typing">Düşünüyor…</div></div>' : ''}
+        </div>
+        <div class="chat-input">
+          <textarea id="chat-q" rows="2" maxlength="1000" placeholder="Sorunuzu yazın… (Enter ile gönder, Shift+Enter yeni satır)" ${ui.chatBusy ? 'disabled' : ''}></textarea>
+          <button class="btn primary" data-action="assistant-send" ${ui.chatBusy ? 'disabled' : ''}>Gönder</button>
+        </div>
+      </div>
+      <div class="toolbar assistant-foot">
+        <span class="muted">Model: ${esc(st.model)} · Müşteri ve çalışan adları takma adla gönderilir. Cevaplar yanlış olabilir; önemli kararlarda rakamları kontrol edin.</span>
+        <span class="spacer"></span>
+        <button class="btn sm ghost" data-action="assistant-context">Hangi veriler gönderiliyor?</button>
+        ${ui.chat.length ? '<button class="btn sm ghost" data-action="assistant-clear">Sohbeti temizle</button>' : ''}
+      </div>
+    </div>`;
+}
+
+async function assistantAsk(question) {
+  const q = (question || '').trim();
+  if (!q || ui.chatBusy) return;
+  const history = ui.chat.filter(m => !m.error).map(m => ({ role: m.role, text: m.text }));
+  ui.chat.push({ role: 'user', text: q });
+  ui.chatBusy = true;
+  render();
+  try {
+    const r = await api('POST', '/api/assistant/ask', { question: q, history });
+    ui.chat.push({ role: 'assistant', text: r.answer });
+  } catch (e) {
+    if (e.status === 401) return;
+    ui.chat.push({ role: 'assistant', text: e.message, error: true });
+  } finally {
+    ui.chatBusy = false;
+  }
+  if (currentView === 'asistan') {
+    await render();
+    const log = $('#chat-log'); if (log) log.scrollTop = log.scrollHeight;
+    $('#chat-q')?.focus();
+  }
 }

@@ -18,6 +18,7 @@ public static class AuthSetup
     public const string OwnerPolicy = "OwnerOnly";
 
     public const string LoginRateLimit = "login";
+    public const string AssistantRateLimit = "assistant";
 
     public static IServiceCollection AddDukkanAuth(this IServiceCollection services, IWebHostEnvironment env)
     {
@@ -65,6 +66,11 @@ public static class AuthSetup
             o.AddPolicy(LoginRateLimit, ctx => RateLimitPartition.GetFixedWindowLimiter(
                 ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+
+            // Asistan her soruda ücretli bir API çağrısı yapar: kullanıcı başına dakikada 6 soru.
+            o.AddPolicy(AssistantRateLimit, ctx => RateLimitPartition.GetFixedWindowLimiter(
+                ctx.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anon",
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 6, Window = TimeSpan.FromMinutes(1) }));
         });
 
         return services;

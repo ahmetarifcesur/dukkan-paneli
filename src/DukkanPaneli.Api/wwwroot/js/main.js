@@ -70,6 +70,18 @@ const actions = {
   }),
   'undo': ds => undo(Number(ds.id)),
   'show-notifications': () => showNotifications(),
+
+  // Asistan
+  'assistant-send': () => assistantAsk($('#chat-q')?.value),
+  'assistant-suggest': ds => assistantAsk(ds.q),
+  'assistant-clear': () => { ui.chat = []; render(); },
+  'assistant-context': async () => {
+    try {
+      const r = await api('GET', '/api/assistant/context');
+      openPanel('Asistana gönderilen özet', `<p class="muted">Her soruda bu metin ve sorunuz Anthropic'e (Claude) gönderilir. Müşteri ve çalışan adları takma adla yazılır, cevapta gerçek adlarına geri çevrilir.</p>
+        <pre class="context-preview">${esc(r.text)}</pre><div class="form-actions"><button class="btn primary" data-action="close-modal">Kapat</button></div>`, true);
+    } catch (e) { if (e.status !== 401) toast(e.message, 'error'); }
+  },
   'enable-notifications': safe(async () => {
     if (!('Notification' in window)) return toast('Bu tarayıcı bildirimleri desteklemiyor.', 'error');
     const r = await Notification.requestPermission();
@@ -295,3 +307,10 @@ const savedTheme = store.get(THEME_KEY, null);
 if (savedTheme) document.documentElement.dataset.theme = savedTheme;
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(err => console.warn('Service worker kaydedilemedi', err));
 boot();
+
+document.addEventListener('keydown', e => {
+  if (e.target.id === 'chat-q' && e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    assistantAsk(e.target.value);
+  }
+});

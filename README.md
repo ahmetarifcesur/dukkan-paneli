@@ -7,6 +7,7 @@ Küçük bir dükkanın sahibinin işlerini uzaktan takip etmesi için web uygul
 - stok ve kapasite, stok hareketleri,
 - gelir-gider, tedarikçiler, borç-alacak,
 - takvim ve raporlar,
+- **yapay zekâ asistanı** (Claude): dükkanın durumu hakkında soru-cevap,
 - **her değişikliğin geri alınabildiği işlem geçmişi**.
 
 | Genel bakış | Satış ekranı |
@@ -19,7 +20,8 @@ Küçük bir dükkanın sahibinin işlerini uzaktan takip etmesi için web uygul
 
 - **Backend:** C#, ASP.NET Core 10 Minimal API, Entity Framework Core 10 (migrations), SQLite
 - **Frontend:** HTML, CSS ve kütüphanesiz JavaScript; telefona kurulabilen PWA
-- **Test:** xUnit, 66 test (entegrasyon: `WebApplicationFactory` + geçici veritabanı; birim: saf fonksiyonlar ve bellek içi SQLite)
+- **Test:** xUnit, 82 test (entegrasyon: `WebApplicationFactory` + geçici veritabanı; birim: saf fonksiyonlar ve bellek içi SQLite)
+- **Yapay zekâ:** resmî Anthropic C# kütüphanesi, Claude Opus 5.5
 - **CI:** GitHub Actions; her push'ta derleme (uyarılar hata sayılır) ve testler çalışır
 
 ## Çalıştırma
@@ -136,6 +138,19 @@ geri alınması gereken işlemleri listeler. Geri alma da geçmişe yazılır ve
 - Kurulumu sunucuda yapmayacaksanız önce `Setup__Token` ortam değişkenini uzun, rastgele bir değerle tanımlayın.
 - `App_Data/` klasörü (veritabanı, otomatik yedekler ve oturum anahtarları) kalıcı bir diskte olmalı.
   Disk bozulmasına karşı yedekleri ayrıca başka bir yere (bulut sürücü, USB) kopyalayın.
+
+## Asistan (yapay zekâ)
+
+Sahip, **Asistan** ekranında "Bu ay geçen aya göre nasıl?", "Hangi ürünlerden sipariş vermeliyim?" gibi sorular sorar.
+Sunucu dükkanın güncel özetini (kasa, satış, stok, borç-alacak, kullanıcı satışları) çıkarır ve soruyla birlikte Claude'a gönderir.
+
+- **Kurulum:** console.anthropic.com adresinden bir API anahtarı alın ve sunucuda `ANTHROPIC_API_KEY` ortam değişkeni olarak tanımlayın.
+  Anahtar yoksa ekran kurulum talimatını gösterir; uygulamanın geri kalanı etkilenmez.
+- **Gizlilik:** Müşteri, çalışan ve tedarikçi olmayan kişi adları takma adla gönderilir ("Müşteri-1"); cevapta gerçek adlara geri çevrilir.
+  Telefon, e-posta ve notlar gönderilmez. "Hangi veriler gönderiliyor?" düğmesi gönderilen metni olduğu gibi gösterir.
+- **Maliyet:** Her soru ücretli bir API çağrısıdır (genelde birkaç kuruş dolar). Kullanıcı başına dakikada 6 soru sınırı var;
+  Anthropic konsolundan aylık harcama sınırı da koyabilirsiniz.
+- **Ayarlar:** `Assistant__Model` (varsayılan `claude-opus-5-5`), `Assistant__Effort` (`low` / `medium` / `high`).
 
 ## Yedekleme ve bakım komutları
 

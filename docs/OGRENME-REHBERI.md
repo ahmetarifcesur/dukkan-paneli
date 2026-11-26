@@ -135,6 +135,18 @@ Genel ilke: **istemciye asla güvenme**; arayüzdeki kontroller sadece kullanım
 - Geri yükleme önce dosyanın sağlam bir veritabanı olduğunu kontrol eder (`PRAGMA integrity_check`), mevcut
   veriyi kopyalar, sonra değiştirir. Silinen veriyi geri getirmenin yolunu açık bırakmak, iyi bir alışkanlıktır.
 
+**Yapay zekâ asistanı nasıl kuruldu?** (`Features/Assistant/`)
+- **Tek istek, tek cevap.** Model veritabanına dokunmaz; `ShopSnapshotService` dükkanın özetini metne çevirir, soru ile
+  birlikte gönderilir. En basit yapı bu: ajan, araç çağrısı ya da döngü yok. Rakamlar `ReportService.Build` ile aynı
+  hesaptan geldiği için asistan ekrandakiyle aynı rakamları söyler.
+- **Arayüz arkasında model (`IAssistantModel`).** Gerçek uygulamada `ClaudeAssistantModel` Claude API'sini çağırır;
+  testlerde sahte bir model konur (`AssistantTests`). Böylece testler internete çıkmaz, para harcamaz ve modele tam
+  olarak ne gönderildiği kontrol edilebilir. Bu "bağımlılığı tersine çevirme" (dependency inversion) örneğidir.
+- **Kişisel veri en aza.** `Pseudonyms` müşteri ve çalışan adlarını "Müşteri-1" gibi takma adlarla değiştirir, cevap
+  gelince geri çevirir. KVKK'nın "veri minimizasyonu" ilkesinin koddaki karşılığı.
+- **Hata yönetimi.** SDK'nın her HTTP durumu için ayrı istisna sınıfı var (401, 429, 5xx, bağlantı); her biri kullanıcıya
+  ayrı bir Türkçe mesaj olarak döner. Anahtar sadece sunucuda durur.
+
 ## 5. Sık kullanılan komutlar
 
 ```powershell
@@ -189,5 +201,7 @@ Her alıştırmadan sonra `dotnet test` çalıştırın ve **ayrı bir commit** 
   Sunucuda `reset-password` komutu geçici şifre üretir ve kullanıcının açık oturumlarını kapatır.
 - "Veri kaybına karşı ne yaptınız?" → Günlük otomatik yedek (`VACUUM INTO`), son 14 gün saklanıyor; geri yükleme
   komutu önce dosyayı doğruluyor ve mevcut veriyi kopyalıyor. Eksik: yedekler aynı diskte, başka yere kopyalanmalı.
+- "Yapay zekâ özelliğini nasıl test ettiniz?" → Modeli bir arayüzün arkasına koydum; testlerde sahte model
+  kullanılıyor ve modele giden metinde müşteri adının olmadığını, cevaptaki takma adların geri çevrildiğini doğruluyorum.
 - "Testleriniz neyi kapsıyor, neyi kapsamıyor?" → Backend iş kuralları ve yetkiler kapsanıyor.
   Arayüz (JavaScript) için otomatik test yok.
