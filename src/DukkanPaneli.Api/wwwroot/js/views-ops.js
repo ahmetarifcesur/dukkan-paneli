@@ -196,7 +196,7 @@ function cartHTML() {
     <div class="cart-sum">
       <div class="row"><span>Ara toplam</span><span class="num">${money(t.gross)}</span></div>
       <div class="row"><span>İndirim (₺)</span><input type="number" class="mini-input narrow" id="pos-discount" value="${esc(ui.posDiscount)}" min="0" step="0.01" placeholder="0"></div>
-      <div class="row muted"><span>Toplama dahil KDV</span><span class="num">${money(t.vat)}</span></div>
+      <div class="row muted"><span>Tutara dahil KDV</span><span class="num">${money(t.vat)}</span></div>
       <div class="row total"><span>Toplam</span><span class="num">${money(t.total)}</span></div>
     </div>
     <div class="pay-opts" role="group" aria-label="Ödeme türü">${Object.keys(PAY_TR).map(k => `<button class="${pay === k ? 'on' : ''}" data-action="pos-pay" data-pay="${k}">${PAY_TR[k]}</button>`).join('')}</div>
