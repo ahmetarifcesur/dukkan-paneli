@@ -247,11 +247,41 @@ function diffHTML(d) {
   }).join('');
 }
 
+/* ----- Çalışanlar ----- */
+async function renderStaff() {
+  const users = await api('GET', '/api/users');
+  ui.users = users; // "Düzenle" düğmesi (edit-user) kullanıcıyı buradan bulur
+  const active = users.filter(u => u.isActive);
+  const staffCount = active.filter(u => u.role === 'Calisan').length;
+  const best = [...users].sort((a, b) => b.month.total - a.month.total)[0];
+  const stats = s => `${money(s.total)}<span class="sub">${num(s.count)} satış</span>`;
+  return `
+    <div class="toolbar"><span class="muted">${users.length} kullanıcı · ${active.length} aktif</span><span class="spacer"></span><button class="btn primary" data-action="add-user">+ Kullanıcı ekle</button></div>
+    <div class="kpis">
+      ${kpi('Aktif kullanıcı', num(active.length), `${staffCount} çalışan · ${active.length - staffCount} sahip`)}
+      ${kpi('Bugünkü satış', money(sumBy(users, u => u.today.total)), `${num(sumBy(users, u => u.today.count))} satış`, 'pos')}
+      ${kpi('Bu ayki satış', money(sumBy(users, u => u.month.total)), `${num(sumBy(users, u => u.month.count))} satış`)}
+      ${kpi('Ayın en çok satanı', best?.month.total ? esc(best.displayName) : '—', best?.month.total ? money(best.month.total) : 'Bu ay satış yok')}
+    </div>
+    <div class="card flush"><div class="table-wrap"><table data-sort="staff">
+      <thead><tr><th>Kullanıcı</th><th>Rol</th><th>Durum</th><th class="r">Bugün</th><th class="r">Bu ay</th><th>Son satış</th><th>Son giriş</th><th class="r">İşlem</th></tr></thead>
+      <tbody>${users.map(u => `<tr class="${u.isActive ? '' : 'inactive'}">
+        <td data-v="${esc(u.displayName)}"><b>${esc(u.displayName)}</b>${u.id === state.me.id ? ' <span class="pill">Siz</span>' : ''}<span class="sub">${esc(u.userName)}</span></td>
+        <td><span class="pill">${u.role === 'Sahip' ? 'Sahip' : 'Çalışan'}</span></td>
+        <td>${u.isActive ? '<span class="pill ok">Aktif</span>' : '<span class="pill danger">Devre dışı</span>'}</td>
+        <td class="r" data-v="${u.today.total}">${stats(u.today)}</td>
+        <td class="r" data-v="${u.month.total}">${stats(u.month)}</td>
+        <td data-v="${u.lastSaleAt || ''}">${u.lastSaleAt ? fmtTime(u.lastSaleAt) : '—'}</td>
+        <td data-v="${u.lastLoginAt || ''}">${u.lastLoginAt ? fmtTime(u.lastLoginAt) : '<span class="muted">Hiç girmedi</span>'}</td>
+        <td class="r actions">${iconBtn('edit-user', u.id, ICON.edit, 'Düzenle: ad, rol, durum, şifre')}</td>
+      </tr>`).join('')}</tbody></table></div></div>
+    <p class="muted note">Çalışanlar satış yapabilir, stok girebilir, takvimi kullanabilir; gelir-gider, borçlar, raporlar, maliyetler ve geçmiş onlara kapalıdır. İşten ayrılan birini silmek yerine <b>devre dışı</b> bırakın: geçmiş satışları korunur. Rol, durum ya da şifre değişince kişinin açık oturumları hemen kapanır. Satış rakamlarına iptal edilen satışlar dahil değildir.</p>`;
+}
+
 /* ----- Ayarlar ----- */
 async function renderSettings() {
   const owner = isOwner();
-  const [users, backups] = owner ? await Promise.all([api('GET', '/api/users'), api('GET', '/api/admin/backups')]) : [[], null];
-  ui.users = users;
+  const backups = owner ? await api('GET', '/api/admin/backups') : null;
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   const permText = { granted: 'Açık', denied: 'Engellendi (tarayıcı ayarlarından izin verin)', default: 'Kapalı', unsupported: 'Bu tarayıcı desteklemiyor' }[perm];
   return `
@@ -277,10 +307,9 @@ async function renderSettings() {
         </form>
       </div>
       ${owner ? `<div class="card">
-        <div class="card-head"><h3>Kullanıcılar</h3><button class="btn sm primary" data-action="add-user">+ Kullanıcı ekle</button></div>
-        <ul class="mini-list">${users.map(u => `<li><span>${esc(u.displayName)} <small>${esc(u.userName)} · ${u.role === 'Sahip' ? 'Sahip' : 'Çalışan'}${u.isActive ? '' : ' · <b>devre dışı</b>'}</small></span>
-          <button class="icon-btn sm" data-action="edit-user" data-id="${u.id}" title="Düzenle" aria-label="Düzenle">${ICON.edit}</button></li>`).join('')}</ul>
-        <p class="muted note">Çalışanlar satış yapabilir, stok girebilir, takvimi kullanabilir; gelir-gider, borçlar, raporlar, maliyetler ve geçmiş onlara kapalıdır.</p>
+        <h3>Kullanıcılar</h3>
+        <p class="muted">Çalışan ekleme, düzenleme, devre dışı bırakma ve satış performansı artık ayrı bir sayfada.</p>
+        <div class="btn-row"><a class="btn primary" href="#calisanlar">Çalışanlar sayfasına git</a></div>
       </div>` : ''}
       <div class="card">
         <h3>Bildirimler</h3>

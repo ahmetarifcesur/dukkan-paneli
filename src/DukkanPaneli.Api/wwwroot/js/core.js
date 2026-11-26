@@ -205,6 +205,7 @@ const VIEWS = {
   takvim: { title: 'Takvim', render: () => renderCalendar() },
   raporlar: { title: 'Raporlar', owner: true, render: () => renderReports() },
   gecmis: { title: 'İşlem Geçmişi', owner: true, render: () => renderHistory() },
+  calisanlar: { title: 'Çalışanlar', owner: true, render: () => renderStaff() },
   ayarlar: { title: 'Ayarlar', render: () => renderSettings() },
 };
 

@@ -19,7 +19,7 @@ Küçük bir dükkanın sahibinin işlerini uzaktan takip etmesi için web uygul
 
 - **Backend:** C#, ASP.NET Core 10 Minimal API, Entity Framework Core 10 (migrations), SQLite
 - **Frontend:** HTML, CSS ve kütüphanesiz JavaScript; telefona kurulabilen PWA
-- **Test:** xUnit, 61 test (entegrasyon: `WebApplicationFactory` + geçici veritabanı; birim: saf fonksiyonlar ve bellek içi SQLite)
+- **Test:** xUnit, 66 test (entegrasyon: `WebApplicationFactory` + geçici veritabanı; birim: saf fonksiyonlar ve bellek içi SQLite)
 - **CI:** GitHub Actions; her push'ta derleme (uyarılar hata sayılır) ve testler çalışır
 
 ## Çalıştırma
@@ -86,7 +86,8 @@ tests/DukkanPaneli.Tests/
 | Takvim | Etkinlikler, borç ve alacak vadeleri, aylık tekrar |
 | Raporlar | Ciro, brüt kâr ve marj, ortalama sepet, en çok satan ürünler, ödeme türleri, kasiyer bazında satış, tahmini KDV, fire kaybı; **Excel** ve **Yazdır / PDF** |
 | İşlem Geçmişi | Kim, ne zaman, neyi değiştirdi (önceki ve sonraki değerleriyle). **Geri al** ve **Yeniden uygula** |
-| Ayarlar | Dükkan bilgileri, kullanıcılar ve roller, şifre değiştirme, bildirimler, veritabanı yedeği |
+| Çalışanlar | Kullanıcı ekleme, düzenleme, devre dışı bırakma; her kişinin bugünkü ve bu ayki satışı, son satışı ve son girişi |
+| Ayarlar | Dükkan bilgileri, şifre değiştirme, bildirimler, otomatik yedekler |
 
 ### Roller
 

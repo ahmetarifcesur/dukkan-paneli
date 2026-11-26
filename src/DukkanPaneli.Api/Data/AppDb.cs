@@ -50,6 +50,7 @@ public partial class AppDb(DbContextOptions<AppDb> options) : DbContext(options)
 
         m.Entity<Sale>().HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.SaleId).OnDelete(Restrict);
         m.Entity<Sale>().HasIndex(x => x.Date);
+        m.Entity<Sale>().HasOne<User>().WithMany().HasForeignKey(x => x.CreatedById).OnDelete(Restrict);
         m.Entity<SaleLine>().HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(Restrict);
 
         m.Entity<StockMovement>().HasOne(x => x.Product).WithMany().HasForeignKey(x => x.ProductId).OnDelete(Restrict);

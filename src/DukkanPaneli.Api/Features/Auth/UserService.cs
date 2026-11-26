@@ -9,10 +9,40 @@ namespace DukkanPaneli.Api.Features.Auth;
 /// <summary>Kullanıcı yönetimi (yalnızca sahip). Kullanıcı işlemleri geçmişe yazılır ama geri alınamaz.</summary>
 public sealed class UserService(AppDb db, IPasswordHasher<User> hasher)
 {
-    public Task<List<UserDto>> ListAsync() =>
-        db.Users.OrderBy(u => u.Id)
-            .Select(u => new UserDto(u.Id, u.UserName, u.DisplayName, u.Role, u.IsActive, u.CreatedAt))
+    /// <summary>Kullanıcılar ve her birinin bugünkü / bu ayki satışı (iptal edilenler hariç), son satışı ve son girişi.</summary>
+    public async Task<List<UserDto>> ListAsync()
+    {
+        var users = await db.Users.AsNoTracking().OrderBy(u => u.Id).ToListAsync();
+
+        var today = Clock.Today;
+        var monthStart = new DateOnly(today.Year, today.Month, 1);
+        // Para alanları veritabanında ölçeklenmiş tamsayı olarak duruyor (ScaledDecimalConverter); SQL'de toplamak
+        // yerine bu ayın satışlarını belleğe alıp gruplamak hem basit hem yeterince hızlı (tek dükkan).
+        var monthSales = await db.Sales.AsNoTracking()
+            .Where(s => !s.IsCancelled && s.CreatedById != null && s.Date >= monthStart && s.Date <= today)
+            .Select(s => new { s.CreatedById, s.Date, s.Total })
             .ToListAsync();
+
+        // Her kullanıcının en son satışı: Id'ler artan olduğu için en büyük Id en son satıştır.
+        var lastSaleIds = await db.Sales.AsNoTracking()
+            .Where(s => s.CreatedById != null)
+            .GroupBy(s => s.CreatedById)
+            .Select(g => g.Max(s => s.Id))
+            .ToListAsync();
+        var lastSaleAt = await db.Sales.AsNoTracking()
+            .Where(s => lastSaleIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.CreatedById!.Value, s => s.CreatedAt);
+
+        SalesStatsDto Stats(int userId, DateOnly from)
+        {
+            var list = monthSales.Where(s => s.CreatedById == userId && s.Date >= from).ToList();
+            return new SalesStatsDto(list.Count, list.Sum(s => s.Total));
+        }
+
+        return users.Select(u => new UserDto(u.Id, u.UserName, u.DisplayName, u.Role, u.IsActive, u.CreatedAt, u.LastLoginAt,
+                Stats(u.Id, today), Stats(u.Id, monthStart), lastSaleAt.TryGetValue(u.Id, out var at) ? at : null))
+            .ToList();
+    }
 
     public async Task<OpResult> CreateAsync(Actor actor, CreateUserRequest req)
     {

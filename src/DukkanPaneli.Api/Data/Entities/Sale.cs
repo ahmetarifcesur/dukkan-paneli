@@ -6,6 +6,9 @@ public class Sale
     public DateOnly Date { get; set; }
     public DateTime CreatedAt { get; set; }
     public string CreatedBy { get; set; } = "";
+
+    /// <summary>Satışı yapan kullanıcı. Ad değişse de çalışan istatistikleri doğru kalsın diye numarasıyla saklanır.</summary>
+    public int? CreatedById { get; set; }
     public PaymentType PaymentType { get; set; }
     public string Customer { get; set; } = "";
 

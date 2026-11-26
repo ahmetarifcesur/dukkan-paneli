@@ -34,7 +34,7 @@ public sealed class SaleService(AppDb db)
 
         var sale = new Sale
         {
-            Date = date, CreatedAt = DateTime.UtcNow, CreatedBy = actor.Name,
+            Date = date, CreatedAt = DateTime.UtcNow, CreatedBy = actor.Name, CreatedById = actor.Id,
             PaymentType = r.PaymentType, Customer = customer, Note = Input.Clean(r.Note, 200),
         };
         decimal vatSum = 0;

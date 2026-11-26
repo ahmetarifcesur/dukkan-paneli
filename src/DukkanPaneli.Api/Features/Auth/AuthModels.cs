@@ -16,7 +16,11 @@ public sealed record MeDto(int Id, string UserName, string DisplayName, Role Rol
     public static MeDto From(User u) => new(u.Id, u.UserName, u.DisplayName, u.Role);
 }
 
-public sealed record UserDto(int Id, string UserName, string DisplayName, Role Role, bool IsActive, DateTime CreatedAt);
+public sealed record SalesStatsDto(int Count, decimal Total);
+
+/// <summary>Kullanıcı ve satış özeti (Çalışanlar sayfası). Today/Month: iptal edilmemiş satışlar.</summary>
+public sealed record UserDto(int Id, string UserName, string DisplayName, Role Role, bool IsActive, DateTime CreatedAt,
+    DateTime? LastLoginAt, SalesStatsDto Today, SalesStatsDto Month, DateTime? LastSaleAt);
 
 /// <param name="SetupTokenRequired">Kurulum ekranında "kurulum anahtarı" alanı gösterilsin mi.</param>
 public sealed record AuthStatusDto(bool NeedsSetup, string ShopName, MeDto? User, bool SetupTokenRequired = false);

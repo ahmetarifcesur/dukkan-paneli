@@ -98,7 +98,7 @@ public sealed class DemoDataService(AppDb db)
                 var credit = day == today.AddDays(-8) && n == 0;
                 var sale = new Sale
                 {
-                    Date = day, CreatedAt = At(day, Between(9, 19)), CreatedBy = by,
+                    Date = day, CreatedAt = At(day, Between(9, 19)), CreatedBy = by, CreatedById = actor.Id,
                     PaymentType = credit ? PaymentType.OnCredit : rnd.NextDouble() < 0.65 ? PaymentType.Cash : PaymentType.Card,
                     Customer = credit ? "Mehmet Bey" : customers[Between(0, customers.Length - 1)],
                 };

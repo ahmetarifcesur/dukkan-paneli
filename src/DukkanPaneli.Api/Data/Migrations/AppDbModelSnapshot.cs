@@ -306,6 +306,9 @@ namespace DukkanPaneli.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("CreatedById")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Customer")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -337,6 +340,8 @@ namespace DukkanPaneli.Api.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
 
                     b.HasIndex("Date");
 
@@ -495,6 +500,9 @@ namespace DukkanPaneli.Api.Data.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -579,6 +587,14 @@ namespace DukkanPaneli.Api.Data.Migrations
                     b.HasOne("DukkanPaneli.Api.Data.Supplier", null)
                         .WithMany()
                         .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("DukkanPaneli.Api.Data.Sale", b =>
+                {
+                    b.HasOne("DukkanPaneli.Api.Data.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 

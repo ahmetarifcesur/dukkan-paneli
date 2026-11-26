@@ -54,6 +54,7 @@ public sealed partial class AuthService(AppDb db, IPasswordHasher<User> hasher, 
             DisplayName = Input.CleanOr(req.DisplayName, 60, userName),
             Role = Role.Owner,
             CreatedAt = DateTime.UtcNow,
+            LastLoginAt = DateTime.UtcNow, // kurulumdan sonra oturum otomatik açılır
         };
         user.PasswordHash = hasher.HashPassword(user, req.Password!);
         db.Users.Add(user);
@@ -83,10 +84,10 @@ public sealed partial class AuthService(AppDb db, IPasswordHasher<User> hasher, 
 
         // Hash algoritması güncellendiyse şifreyi yeni algoritmayla yeniden sakla.
         if (check == PasswordVerificationResult.SuccessRehashNeeded)
-        {
             user.PasswordHash = hasher.HashPassword(user, req.Password!);
-            await db.SaveChangesAsync();
-        }
+
+        user.LastLoginAt = DateTime.UtcNow; // Çalışanlar sayfasında "son giriş" olarak görünür
+        await db.SaveChangesAsync();
         return Result<User>.Ok(user);
     }
 

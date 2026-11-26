@@ -16,6 +16,7 @@ public class User
     public string SecurityStamp { get; set; } = NewStamp();
 
     public DateTime CreatedAt { get; set; }
+    public DateTime? LastLoginAt { get; set; }
 
     public static string NewStamp() => Guid.NewGuid().ToString("N");
 }

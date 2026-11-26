@@ -23,6 +23,11 @@ public sealed class SaleServiceTests : IDisposable
         _connection.Open();
         _db = new AppDb(new DbContextOptionsBuilder<AppDb>().UseSqlite(_connection).Options);
         _db.Database.Migrate();
+        // Satış, yapan kullanıcıya numarasıyla bağlanır (Sale.CreatedById); kullanıcılar gerçekten var olmalı.
+        _db.Users.AddRange(
+            new User { Id = Owner.Id!.Value, UserName = "sahip", DisplayName = Owner.Name, Role = Role.Owner },
+            new User { Id = Staff.Id!.Value, UserName = "kasa", DisplayName = Staff.Name, Role = Role.Staff });
+        _db.SaveChanges();
         _sales = new SaleService(_db);
     }
 
