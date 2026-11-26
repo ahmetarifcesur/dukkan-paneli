@@ -56,6 +56,8 @@ public static class ServiceRegistration
         services.AddScoped<ReportService>();
         services.AddScoped<AdminService>();
         services.AddScoped<DemoDataService>();
+        services.AddSingleton<AutoBackupService>();
+        services.AddHostedService(sp => sp.GetRequiredService<AutoBackupService>()); // günlük otomatik yedek
         return services;
     }
 

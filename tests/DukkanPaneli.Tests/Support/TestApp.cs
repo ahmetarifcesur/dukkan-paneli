@@ -17,6 +17,7 @@ public sealed class TestApp(string environment = "Development", Dictionary<strin
     {
         builder.UseEnvironment(environment);
         builder.UseSetting("ConnectionStrings:Default", $"Data Source={_dbPath};Pooling=False");
+        builder.UseSetting("Backup:Enabled", "false"); // testler arka planda yedek almasın; yedek testleri servisi kendisi çağırır
         foreach (var (key, value) in settings ?? []) builder.UseSetting(key, value);
     }
 

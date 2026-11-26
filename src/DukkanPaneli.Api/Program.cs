@@ -14,6 +14,13 @@ builder.Services
 
 var app = builder.Build();
 
+// Bakım komutu verildiyse (ör. "-- reset-password sahip") onu çalıştır ve web sunucusunu başlatmadan çık.
+if (Commands.IsCommand(args))
+{
+    Environment.ExitCode = await Commands.RunAsync(app.Services, args, Console.Out);
+    return;
+}
+
 // Veritabanını en son şemaya getir (ilk açılışta tabloları oluşturur, sonra yeni migration'ları uygular).
 using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<AppDb>().Database.MigrateAsync();

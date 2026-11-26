@@ -10,9 +10,18 @@ public sealed record SettingsRequest(string? ShopName, decimal? DefaultVatRate);
 
 public sealed record BackupFile(byte[] Content, string FileName);
 
+public sealed record AutoBackupsDto(bool Enabled, int Keep, string Directory, List<BackupInfo> Files);
+
 /// <summary>Ayarlar, örnek veri, veri temizleme ve yedek.</summary>
-public sealed class AdminService(AppDb db, DemoDataService demo)
+public sealed class AdminService(AppDb db, DemoDataService demo, IConfiguration config)
 {
+    /// <summary>Sunucudaki otomatik yedekler (Ayarlar ekranında gösterilir).</summary>
+    public AutoBackupsDto AutoBackups()
+    {
+        var dir = Backups.Directory(db, config);
+        return new AutoBackupsDto(config.GetValue("Backup:Enabled", true), config.GetValue("Backup:Keep", 14), dir, Backups.List(dir));
+    }
+
     public async Task<OpResult> UpdateSettingsAsync(Actor actor, SettingsRequest r)
     {
         var name = Input.Clean(r.ShopName, 60);
@@ -43,7 +52,7 @@ public sealed class AdminService(AppDb db, DemoDataService demo)
         var tmp = Path.Combine(Path.GetTempPath(), $"dukkan-yedek-{Guid.NewGuid():N}.db");
         try
         {
-            await db.Database.ExecuteSqlAsync($"VACUUM INTO {tmp}");
+            await Backups.CreateAsync(db, tmp);
             return new BackupFile(await File.ReadAllBytesAsync(tmp), $"dukkan-yedek-{DateTime.Now:yyyy-MM-dd-HHmm}.db");
         }
         finally

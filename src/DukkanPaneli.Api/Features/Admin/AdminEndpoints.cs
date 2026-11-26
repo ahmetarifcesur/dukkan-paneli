@@ -18,6 +18,8 @@ public static class AdminEndpoints
         owner.MapPost("/admin/clear", async (HttpContext ctx, AdminService svc) =>
             (await svc.ClearAllAsync(Actor.From(ctx.User))).ToHttp());
 
+        owner.MapGet("/admin/backups", (AdminService svc) => Results.Ok(svc.AutoBackups()));
+
         owner.MapGet("/admin/backup", async (AdminService svc) =>
         {
             var file = await svc.BackupAsync();

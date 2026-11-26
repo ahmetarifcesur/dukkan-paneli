@@ -34,7 +34,7 @@ Bu ayrım sayesinde servisleri HTTP olmadan test edebiliyoruz (bkz. `tests/.../U
 
 ## 2. Okuma sırası
 
-1. **`Program.cs`**: 40 satır. Uygulama nasıl ayağa kalkıyor?
+1. **`Program.cs`**: 50 satır civarı. Uygulama nasıl ayağa kalkıyor?
 2. **`Infrastructure/ServiceRegistration.cs`**: Servisler DI'a nasıl kaydediliyor, uç noktalar nasıl bağlanıyor?
 3. **`Data/Entities/*.cs`**: Veri modeli. Önce `Product`, `Sale`, `StockMovement`, `CashEntry`, `Debt`.
 4. **`Data/AppDb.cs`**: Tablolar ve ilişkiler. Neden hiçbir ilişkide zincirleme silme (cascade) yok?
@@ -122,6 +122,19 @@ Kötü niyetli bir site, sizin tarayıcınızdan bizim API'ye form gönderebilir
 Ama başka bir site özel bir HTTP başlığı (`X-Requested-With`) ekleyemez. Bu yüzden bu başlığı zorunlu tutuyoruz.
 Ek olarak çerez `SameSite=Strict`.
 
+**Kural neden sunucuda?** (`SaleService.CreateAsync`, `SecurityTests`)
+Arayüz çalışana fiyat alanını göstermiyor, ama bu güvenlik değildir: herkes tarayıcının geliştirici
+araçlarından API'ye istediği isteği gönderebilir. Bu yüzden "fiyatı sadece sahip değiştirir" kuralı sunucuda.
+Genel ilke: **istemciye asla güvenme**; arayüzdeki kontroller sadece kullanım kolaylığı içindir.
+
+**Arka plan servisi ve bakım komutları** (`AutoBackupService`, `Infrastructure/Commands.cs`)
+- `BackgroundService`, uygulama açıkken arka planda çalışan bir döngüdür. Burada saatte bir "bugünün yedeği
+  var mı?" diye bakıyor, yoksa `VACUUM INTO` ile tutarlı bir kopya alıyor ve eski yedekleri siliyor.
+- Şifre sıfırlama ve geri yükleme web'den yapılamaz: sunucuya erişimi olan kişi `dotnet run -- <komut>` ile
+  çalıştırır. `Program.cs`, ilk argüman bir komutsa web sunucusunu hiç başlatmadan komutu çalıştırıp çıkar.
+- Geri yükleme önce dosyanın sağlam bir veritabanı olduğunu kontrol eder (`PRAGMA integrity_check`), mevcut
+  veriyi kopyalar, sonra değiştirir. Silinen veriyi geri getirmenin yolunu açık bırakmak, iyi bir alışkanlıktır.
+
 ## 5. Sık kullanılan komutlar
 
 ```powershell
@@ -131,6 +144,7 @@ dotnet test --filter "FullyQualifiedName~Unit"                           # sadec
 dotnet tool restore                                                      # dotnet-ef aracını kur (ilk sefer)
 dotnet ef migrations add YeniAlan --project src/DukkanPaneli.Api -o Data/Migrations   # şema değişikliği
 dotnet ef migrations list --project src/DukkanPaneli.Api                 # migration listesi
+dotnet run --project src/DukkanPaneli.Api -- help                       # bakım komutları (yedek, şifre sıfırlama)
 ```
 
 ## 6. Alıştırmalar (kolaydan zora)
@@ -171,5 +185,9 @@ Her alıştırmadan sonra `dotnet test` çalıştırın ve **ayrı bir commit** 
   eklemek. Bu, bilinen bir sınır ve iyi bir geliştirme konusu.
 - "Neden SQLite?" → Tek dükkan, tek sunucu, kurulum gerektirmez, yedeği tek dosya. Büyürse EF Core sayesinde
   PostgreSQL'e geçmek için çoğunlukla bağlantı satırını değiştirmek yeter.
+- "Kullanıcı şifresini unutursa?" → Web'den sıfırlama yok (e-posta altyapısı yok, saldırı yüzeyi de olurdu).
+  Sunucuda `reset-password` komutu geçici şifre üretir ve kullanıcının açık oturumlarını kapatır.
+- "Veri kaybına karşı ne yaptınız?" → Günlük otomatik yedek (`VACUUM INTO`), son 14 gün saklanıyor; geri yükleme
+  komutu önce dosyayı doğruluyor ve mevcut veriyi kopyalıyor. Eksik: yedekler aynı diskte, başka yere kopyalanmalı.
 - "Testleriniz neyi kapsıyor, neyi kapsamıyor?" → Backend iş kuralları ve yetkiler kapsanıyor.
   Arayüz (JavaScript) için otomatik test yok.

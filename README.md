@@ -19,7 +19,7 @@ Küçük bir dükkanın sahibinin işlerini uzaktan takip etmesi için web uygul
 
 - **Backend:** C#, ASP.NET Core 10 Minimal API, Entity Framework Core 10 (migrations), SQLite
 - **Frontend:** HTML, CSS ve kütüphanesiz JavaScript; telefona kurulabilen PWA
-- **Test:** xUnit, 55 test (entegrasyon: `WebApplicationFactory` + geçici veritabanı; birim: saf fonksiyonlar ve bellek içi SQLite)
+- **Test:** xUnit, 61 test (entegrasyon: `WebApplicationFactory` + geçici veritabanı; birim: saf fonksiyonlar ve bellek içi SQLite)
 - **CI:** GitHub Actions; her push'ta derleme (uyarılar hata sayılır) ve testler çalışır
 
 ## Çalıştırma
@@ -133,7 +133,27 @@ geri alınması gereken işlemleri listeler. Geri alma da geçmişe yazılır ve
 - **HTTPS zorunlu:** uygulamayı Caddy, nginx ya da Cloudflare Tunnel gibi bir ters vekilin (reverse proxy) arkasında çalıştırın.
   Vekil aynı makinedeyse gerçek IP ve HTTPS bilgisi (`X-Forwarded-*`) otomatik kullanılır.
 - Kurulumu sunucuda yapmayacaksanız önce `Setup__Token` ortam değişkenini uzun, rastgele bir değerle tanımlayın.
-- `App_Data/` klasörü (veritabanı ve oturum anahtarları) kalıcı bir diskte olmalı ve düzenli yedeklenmeli.
+- `App_Data/` klasörü (veritabanı, otomatik yedekler ve oturum anahtarları) kalıcı bir diskte olmalı.
+  Disk bozulmasına karşı yedekleri ayrıca başka bir yere (bulut sürücü, USB) kopyalayın.
+
+## Yedekleme ve bakım komutları
+
+Uygulama açıkken **her gün otomatik yedek** alır (`App_Data/backups/dukkan-YYYY-MM-DD.db`) ve son 14 yedeği saklar.
+Ayarlar: `Backup__Enabled`, `Backup__Keep`, `Backup__Directory` (ortam değişkeni ya da `appsettings.json`).
+Yedekler Ayarlar ekranında da listelenir.
+
+Sunucuda çalıştırılan komutlar (web'den çağrılamaz):
+
+```powershell
+dotnet run --project src/DukkanPaneli.Api -- help
+```
+
+| Komut | Ne yapar |
+|---|---|
+| `reset-password <kullanıcı>` | Şifresini unutan kullanıcıya geçici şifre üretir; açık oturumlarını kapatır |
+| `backup` | Hemen bir yedek alır (uygulama açıkken de olur) |
+| `list-backups` | Yedekleri listeler |
+| `restore-backup <dosya>` | Yedeği geri yükler. **Önce uygulamayı durdurun.** Mevcut veri `restore-oncesi-…` adıyla saklanır; bozuk ya da yabancı dosya reddedilir |
 
 ## Uzaktan erişim
 
@@ -148,4 +168,5 @@ Telefonda tarayıcı menüsündeki **"Ana ekrana ekle"** ile uygulama gibi kurul
 - Arayüz için otomatik test yok.
 - Bildirimler panel açıkken ya da arka planda çalışırken gelir. Uygulama tamamen kapalıyken bildirim için Web Push (VAPID) gerekir.
 - Fiş bir **bilgi fişidir**; e-Arşiv fatura ya da ÖKC entegrasyonu yok. KDV rakamları tahminidir.
-- Yedeği geri yüklemek elle yapılıyor: `App_Data/dukkan.db` dosyası değiştirilir.
+- Geçici şifreyle girişten sonra şifre değiştirmek zorunlu tutulmuyor; kullanıcıya hatırlatılıyor.
+- Otomatik yedekler aynı diskte durur; başka bir yere kopyalamak sizin işiniz.

@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using DukkanPaneli.Api.Common;
 using DukkanPaneli.Api.Data;
 using Microsoft.AspNetCore.Identity;
@@ -33,6 +34,26 @@ public sealed class UserService(AppDb db, IPasswordHasher<User> hasher)
         var log = await db.SaveAuditedAsync(actor, "user.create",
             () => $"Kullanıcı eklendi: {user.DisplayName} ({user.UserName}, {Format.Label(user.Role)})", undoable: false);
         return OpResult.Ok(log, new { user.Id });
+    }
+
+    /// <summary>
+    /// Unutulan şifre için: rastgele geçici bir şifre üretir, hesabı etkinleştirir ve açık oturumları kapatır.
+    /// Web'den çağrılamaz; sadece sunucuda çalıştırılan komutla kullanılır (bkz. Infrastructure/Commands.cs).
+    /// </summary>
+    /// <returns>Geçici şifre.</returns>
+    public async Task<Result<string>> ResetPasswordAsync(Actor actor, string? userName)
+    {
+        var name = AuthService.NormalizeUserName(userName);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.UserName == name);
+        if (user is null) return Result<string>.Fail($"Kullanıcı bulunamadı: {name}", StatusCodes.Status404NotFound);
+
+        // Karıştırılabilecek karakterler (0/O, 1/l/I) yok; telefondan okuyup yazması kolay olsun.
+        var temp = RandomNumberGenerator.GetString("abcdefghjkmnpqrstuvwxyz23456789", 12);
+        user.PasswordHash = hasher.HashPassword(user, temp);
+        user.SecurityStamp = User.NewStamp();
+        user.IsActive = true;
+        await db.SaveAuditedAsync(actor, "user.password-reset", () => $"Şifre sıfırlandı (sunucu komutu): {user.UserName}", undoable: false);
+        return Result<string>.Ok(temp);
     }
 
     public async Task<OpResult> UpdateAsync(Actor actor, int id, UpdateUserRequest req)

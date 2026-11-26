@@ -250,7 +250,7 @@ function diffHTML(d) {
 /* ----- Ayarlar ----- */
 async function renderSettings() {
   const owner = isOwner();
-  const users = owner ? await api('GET', '/api/users') : [];
+  const [users, backups] = owner ? await Promise.all([api('GET', '/api/users'), api('GET', '/api/admin/backups')]) : [[], null];
   ui.users = users;
   const perm = 'Notification' in window ? Notification.permission : 'unsupported';
   const permText = { granted: 'Açık', denied: 'Engellendi (tarayıcı ayarlarından izin verin)', default: 'Kapalı', unsupported: 'Bu tarayıcı desteklemiyor' }[perm];
@@ -290,8 +290,12 @@ async function renderSettings() {
       </div>
       ${owner ? `<div class="card">
         <h3>Yedekleme</h3>
-        <p class="muted">Veritabanının tam kopyasını indirir. Geri yüklemek için sunucudaki <code>App_Data/dukkan.db</code> dosyasını bu dosyayla değiştirin.</p>
-        <div class="btn-row"><a class="btn" href="/api/admin/backup" download>Veritabanı yedeğini indir (.db)</a><a class="btn" href="/api/reports/excel?from=2000-01-01&to=2100-12-31" download>Tüm veriyi Excel'e aktar</a></div>
+        ${backups.enabled
+          ? `<p class="muted">Sunucu her gün otomatik yedek alır; son ${num(backups.keep)} yedek saklanır.</p>
+            ${backups.files.length ? `<ul class="mini-list">${backups.files.slice(0, 5).map(f => `<li><span>${esc(f.name)}<small>${fmtTime(f.createdAt)}</small></span><b>${num(Math.max(1, Math.round(f.size / 1024)))} KB</b></li>`).join('')}</ul>` : '<p class="muted">Henüz otomatik yedek yok; ilki bir saat içinde alınır.</p>'}`
+          : '<p class="muted"><b>Otomatik yedek kapalı</b> (Backup:Enabled ayarı).</p>'}
+        <p class="muted note">Yedekler sunucuda <code>${esc(backups.directory)}</code> klasöründedir. Geri yüklemek için uygulamayı durdurup sunucuda <code>dotnet run --project src/DukkanPaneli.Api -- restore-backup &lt;dosya&gt;</code> çalıştırın. Bilgisayar bozulursa diye yedeği ayrıca indirip başka bir yerde saklayın.</p>
+        <div class="btn-row"><a class="btn" href="/api/admin/backup" download>Şimdi yedek indir (.db)</a><a class="btn" href="/api/reports/excel?from=2000-01-01&to=2100-12-31" download>Tüm veriyi Excel'e aktar</a></div>
       </div>
       <div class="card">
         <h3>Veri</h3>
