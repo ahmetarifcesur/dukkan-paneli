@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DukkanPaneli.Api/DukkanPaneli.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DukkanPaneli.Tests/DukkanPaneli.Tests.csproj" />
+  </Folder>
+</Solution>

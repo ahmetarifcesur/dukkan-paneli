@@ -1,0 +1,12 @@
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+TestResults/
+
+# Veritabanı ve yedekler (gerçek işletme verisi — depoya girmemeli)
+src/DukkanPaneli.Api/App_Data/
+*.db
+*.db-shm
+*.db-wal
