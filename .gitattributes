@@ -1,0 +1,3 @@
+# Satır sonlarını depoda tek biçimde (LF) tut; Windows'ta çalışırken git kendisi CRLF'ye çevirir.
+* text=auto
+*.png binary

@@ -1,0 +1,36 @@
+# Her push ve pull request'te projeyi derler ve tüm testleri çalıştırır.
+# Sonuç GitHub'da "Actions" sekmesinde ve README'deki rozette görünür.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Europe/Istanbul   # tarih hesapları dükkanın saat diliminde test edilsin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Paketleri geri yükle
+        run: dotnet restore
+
+      - name: Derle (uyarılar hata sayılır)
+        run: dotnet build --no-restore -c Release -warnaserror
+
+      - name: Testleri çalıştır
+        run: dotnet test --no-build -c Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Test sonuçlarını sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/TestResults/*.trx"
