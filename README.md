@@ -24,7 +24,10 @@ Küçük bir dükkanın sahibinin işlerini uzaktan takip etmesi için web uygul
 
 ## Çalıştırma
 
-Gereken: [.NET 10 SDK](https://dotnet.microsoft.com/download)
+**Kurulum yapmadan:** depo sayfasında **Code → Codespaces → Create codespace**. Açılan terminalde aşağıdaki
+`dotnet run` komutunu çalıştırın; uygulama tarayıcıda kendiliğinden açılır (`.devcontainer/` ayarı).
+
+**Kendi bilgisayarınızda:** [.NET 10 SDK](https://dotnet.microsoft.com/download) gerekir.
 
 ```powershell
 cd dukkan-paneli

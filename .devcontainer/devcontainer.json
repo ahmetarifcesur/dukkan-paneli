@@ -1,0 +1,23 @@
+// GitHub Codespaces / VS Code Dev Containers ayarı.
+// Proje, .NET 10 SDK kurulu bir Linux konteynerinde açılır; bilgisayarınıza bir şey kurmanız gerekmez.
+{
+  "name": "Dükkan Paneli",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:1-10.0-noble",
+
+  // Konteyner oluşturulunca paketleri ve yerel araçları (dotnet-ef) indir.
+  "postCreateCommand": "dotnet restore && dotnet tool restore",
+
+  // Uygulamanın portunu tarayıcıya aç; uygulama başlayınca sayfa kendiliğinden açılır.
+  "forwardPorts": [5080],
+  "portsAttributes": {
+    "5080": { "label": "Dükkan Paneli", "onAutoForward": "openBrowser" }
+  },
+
+  "containerEnv": { "TZ": "Europe/Istanbul" },
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-dotnettools.csdevkit"]
+    }
+  }
+}
