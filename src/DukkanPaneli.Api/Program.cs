@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddDukkanDatabase(builder.Configuration, builder.Environment)
-    .AddDukkanAuth()
+    .AddDukkanAuth(builder.Environment)
     .AddDukkanServices();
 
 var app = builder.Build();
@@ -19,6 +19,9 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider.GetRequiredService<AppDb>().Database.MigrateAsync();
 
 // Ara katmanlar (middleware) yazıldığı sırayla çalışır.
+app.UseForwardedHeaders(); // ters vekil arkasında gerçek IP ve https bilgisi (bkz. AuthSetup)
+if (!app.Environment.IsDevelopment())
+    app.UseHsts(); // HTTPS ile açıldıysa tarayıcı bundan sonra siteye hep HTTPS ile gelsin
 app.UseExceptionHandler(e => e.Run(async ctx =>
 {
     ctx.Response.StatusCode = StatusCodes.Status500InternalServerError;

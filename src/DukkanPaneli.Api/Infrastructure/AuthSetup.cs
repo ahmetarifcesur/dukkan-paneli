@@ -4,6 +4,8 @@ using DukkanPaneli.Api.Common;
 using DukkanPaneli.Api.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,8 +19,22 @@ public static class AuthSetup
 
     public const string LoginRateLimit = "login";
 
-    public static IServiceCollection AddDukkanAuth(this IServiceCollection services)
+    public static IServiceCollection AddDukkanAuth(this IServiceCollection services, IWebHostEnvironment env)
     {
+        // Oturum çerezleri bu anahtarlarla şifrelenir. Varsayılan konum sunucu/konteyner yeniden kurulunca
+        // kaybolabilir (herkesin oturumu düşer); bu yüzden anahtarları veritabanının yanında saklıyoruz.
+        // Windows'ta dosyalar ayrıca DPAPI ile şifrelenir.
+        var dp = services.AddDataProtection()
+            .SetApplicationName("DukkanPaneli")
+            .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(env.ContentRootPath, "App_Data", "keys")));
+        if (OperatingSystem.IsWindows()) dp.ProtectKeysWithDpapi();
+
+        // Uygulama nginx, Caddy ya da Cloudflare Tunnel gibi bir ters vekilin (reverse proxy) arkasında
+        // çalışınca gerçek ziyaretçi IP'si ve HTTPS bilgisi X-Forwarded-* başlıklarıyla gelir. Bu başlıklara
+        // sadece aynı makinedeki vekilden (localhost) gelirse güvenilir; yoksa herkes IP'sini taklit edebilirdi.
+        services.Configure<ForwardedHeadersOptions>(o =>
+            o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto);
+
         services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie(o =>
             {

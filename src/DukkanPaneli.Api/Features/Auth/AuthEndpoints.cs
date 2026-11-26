@@ -15,15 +15,25 @@ public static class AuthEndpoints
     {
         var auth = app.MapGroup("/api/auth");
 
-        auth.MapGet("/status", async (HttpContext ctx, AuthService svc) => Results.Ok(await svc.StatusAsync(ctx.User)));
-
-        auth.MapPost("/setup", async (SetupRequest req, HttpContext ctx, AuthService svc) =>
+        auth.MapGet("/status", async (HttpContext ctx, AuthService svc, SetupGuard guard) =>
         {
+            var s = await svc.StatusAsync(ctx.User);
+            return Results.Ok(s with { SetupTokenRequired = s.NeedsSetup && guard.TokenRequired });
+        });
+
+        auth.MapPost("/setup", async (SetupRequest req, HttpContext ctx, AuthService svc, SetupGuard guard) =>
+        {
+            if (!guard.IsAllowed(ctx, req.SetupToken))
+                return HttpResults.Fail(guard.TokenRequired
+                    ? "Kurulum anahtarı hatalı."
+                    : "Kurulum yalnızca sunucu bilgisayarından (localhost) ya da kurulum anahtarıyla yapılabilir. " +
+                      "Anahtarı Setup__Token ortam değişkeniyle tanımlayın.", StatusCodes.Status403Forbidden);
+
             var r = await svc.SetupAsync(req);
             if (!r.Succeeded) return HttpResults.Fail(r.Error!, r.Status);
             await AuthService.SignInAsync(ctx, r.Value!);
             return Results.Ok(new { user = MeDto.From(r.Value!) });
-        });
+        }).RequireRateLimiting(AuthSetup.LoginRateLimit);
 
         auth.MapPost("/login", async (LoginRequest req, HttpContext ctx, AuthService svc) =>
         {
@@ -45,7 +55,7 @@ public static class AuthEndpoints
             if (!r.Succeeded) return HttpResults.Fail(r.Error!, r.Status);
             await AuthService.SignInAsync(ctx, r.Value!); // bu cihazın oturumu yeni damgayla devam etsin
             return Results.Ok();
-        }).RequireAuthorization();
+        }).RequireAuthorization().RequireRateLimiting(AuthSetup.LoginRateLimit); // mevcut şifre tahmin edilmesin
 
         var users = app.MapGroup("/api/users").RequireAuthorization(AuthSetup.OwnerPolicy);
 

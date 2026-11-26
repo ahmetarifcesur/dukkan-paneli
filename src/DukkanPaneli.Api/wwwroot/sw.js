@@ -1,6 +1,6 @@
 // Dükkan Paneli service worker: uygulama kabuğunu önbelleğe alır (bağlantı kesilse de açılır)
 // ve bildirime tıklanınca ilgili ekranı açar. API yanıtları asla önbelleğe alınmaz.
-const CACHE = 'dukkan-shell-v3';
+const CACHE = 'dukkan-shell-v4';
 const SHELL = ['/', '/index.html', '/style.css', '/js/core.js', '/js/views-ops.js', '/js/views-admin.js', '/js/forms.js', '/js/main.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', e => {

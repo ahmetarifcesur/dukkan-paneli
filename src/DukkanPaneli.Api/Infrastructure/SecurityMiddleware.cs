@@ -14,7 +14,10 @@ public static class SecurityMiddleware
         h["Referrer-Policy"] = "same-origin";
         h.XFrameOptions = "DENY";                // site başka bir sitenin içine gömülemesin (clickjacking)
         // CSP: yalnızca kendi sunucumuzdan script/stil yüklenebilir; enjekte edilen <script> çalışmaz.
-        h.ContentSecurityPolicy = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'";
+        h.ContentSecurityPolicy = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; " +
+                                  "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+        h["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"; // kullanmadığımız tarayıcı yetkileri kapalı
+        h["Cross-Origin-Opener-Policy"] = "same-origin";
 
         // CSRF: Başka bir site, kullanıcının tarayıcısından bizim API'ye form gönderebilir (çerez otomatik eklenir).
         // Ama özel bir başlık ekleyemez. Bu yüzden değişiklik yapan her /api isteğinde bu başlığı zorunlu tutuyoruz.

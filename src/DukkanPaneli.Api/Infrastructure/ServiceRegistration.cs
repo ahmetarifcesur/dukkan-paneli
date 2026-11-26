@@ -41,6 +41,7 @@ public static class ServiceRegistration
             o.SerializerOptions.Converters.Add(new CleanDecimalConverter());
         });
 
+        services.AddSingleton<SetupGuard>();
         services.AddScoped<AuthService>();
         services.AddScoped<UserService>();
         services.AddScoped<ProductService>();

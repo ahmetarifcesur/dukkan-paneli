@@ -288,15 +288,15 @@ async function renderSales() {
       ${kpi('Ortalama sepet', money(active.length ? sumBy(active, s => s.total) / active.length : 0), `İndirim toplamı ${money(sumBy(active, s => s.discount))}`)}
       ${owner ? kpi('Brüt kâr', money(sumBy(active, s => s.total - (s.costTotal || 0))), 'Satış − maliyet') : kpi('KDV toplamı', money(sumBy(active, s => s.vatTotal)), 'Satışlara dahil')}
     </div>
-    <div class="card flush">${list.length ? `<div class="table-wrap"><table>
+    <div class="card flush">${list.length ? `<div class="table-wrap"><table data-sort="sales">
       <thead><tr><th>Fiş</th><th>Tarih</th><th>Ürünler</th><th>Ödeme</th><th>Müşteri</th><th class="r">Toplam</th><th>Kasiyer</th><th class="r">İşlem</th></tr></thead>
       <tbody>${list.map(s => `<tr class="${s.isCancelled ? 'cancelled' : ''}">
-        <td><b>${esc(s.no)}</b>${s.isCancelled ? ' <span class="pill danger">İptal</span>' : ''}</td>
-        <td>${fmtDate(s.date)}<span class="sub">${fmtClock(s.createdAt)}</span></td>
+        <td data-v="${s.id}"><b>${esc(s.no)}</b>${s.isCancelled ? ' <span class="pill danger">İptal</span>' : ''}</td>
+        <td data-v="${s.date} ${s.createdAt}">${fmtDate(s.date)}<span class="sub">${fmtClock(s.createdAt)}</span></td>
         <td class="wrap">${esc(s.lines.map(l => `${num(l.quantity)} ${l.unit} ${l.productName}`).join(', '))}</td>
         <td><span class="pill">${PAY_TR[s.paymentType]}</span></td>
         <td>${esc(s.customer || '—')}</td>
-        <td class="r"><b>${money(s.total)}</b>${s.discount > 0 ? `<span class="sub">İnd. ${money(s.discount)}</span>` : ''}</td>
+        <td class="r" data-v="${s.total}"><b>${money(s.total)}</b>${s.discount > 0 ? `<span class="sub">İnd. ${money(s.discount)}</span>` : ''}</td>
         <td>${esc(s.createdBy)}</td>
         <td class="r actions">${iconBtn('show-receipt', s.id, ICON.receipt, 'Fişi göster')}${owner && !s.isCancelled ? `<button class="btn sm danger-soft" data-action="cancel-sale" data-id="${s.id}" data-no="${s.no}">İptal</button>` : ''}</td>
       </tr>`).join('')}</tbody></table></div>` : emptyState('Bu dönemde satış yok.')}</div>`;
@@ -329,20 +329,20 @@ function productTable() {
     .filter(p => (!ui.prodLowOnly || isLow(p)) && (!q || `${p.name} ${p.category} ${supplierById(p.supplierId)?.name || ''}`.toLocaleLowerCase('tr').includes(q)))
     .sort((a, b) => Number(isLow(b)) - Number(isLow(a)) || a.name.localeCompare(b.name, 'tr'));
   if (!list.length) return emptyState(state.products.length ? 'Filtreye uyan ürün yok.' : 'Henüz ürün eklenmedi.');
-  return `<div class="table-wrap"><table>
+  return `<div class="table-wrap"><table data-sort="products">
     <thead><tr><th>Ürün</th><th>Stok / Kapasite</th><th class="r">Min.</th>${owner ? '<th class="r">Alış</th>' : ''}<th class="r">Satış</th><th class="r">KDV</th>${owner ? '<th class="r">Marj</th>' : ''}<th>Tedarikçi</th><th class="r">İşlem</th></tr></thead>
     <tbody>${list.map(p => {
       const ratio = p.capacity ? Math.min(100, (p.stock / p.capacity) * 100) : 0;
       const cls = isLow(p) ? 'low' : ratio < 35 ? 'mid' : '';
       const margin = p.price ? Math.round(((p.price - p.cost) / p.price) * 100) : 0;
       return `<tr>
-        <td><b>${esc(p.name)}</b>${isLow(p) ? ' <span class="pill danger">Kritik</span>' : ''}<span class="sub">${esc(p.category || '—')}</span></td>
-        <td><div class="meter"><div class="meter-track"><div class="meter-fill ${cls}" style="width:${ratio.toFixed(1)}%"></div></div><small>${num(p.stock)} / ${num(p.capacity)} ${esc(p.unit)}</small></div></td>
-        <td class="r">${num(p.minStock)}</td>
-        ${owner ? `<td class="r">${money(p.cost)}</td>` : ''}
-        <td class="r">${money(p.price)}</td>
-        <td class="r">%${num(p.vatRate)}</td>
-        ${owner ? `<td class="r">%${margin}</td>` : ''}
+        <td data-v="${esc(p.name)}"><b>${esc(p.name)}</b>${isLow(p) ? ' <span class="pill danger">Kritik</span>' : ''}<span class="sub">${esc(p.category || '—')}</span></td>
+        <td data-v="${p.stock}"><div class="meter"><div class="meter-track"><div class="meter-fill ${cls}" style="width:${ratio.toFixed(1)}%"></div></div><small>${num(p.stock)} / ${num(p.capacity)} ${esc(p.unit)}</small></div></td>
+        <td class="r" data-v="${p.minStock}">${num(p.minStock)}</td>
+        ${owner ? `<td class="r" data-v="${p.cost}">${money(p.cost)}</td>` : ''}
+        <td class="r" data-v="${p.price}">${money(p.price)}</td>
+        <td class="r" data-v="${p.vatRate}">%${num(p.vatRate)}</td>
+        ${owner ? `<td class="r" data-v="${margin}">%${margin}</td>` : ''}
         <td>${esc(supplierById(p.supplierId)?.name || '—')}</td>
         <td class="r actions">
           <button class="btn sm" data-action="cart-add-go" data-id="${p.id}" ${p.stock > 0 ? '' : 'disabled title="Stok yok"'}>${ICON.cart} Sat</button>
@@ -363,10 +363,10 @@ async function showProductMoves(id, at) {
       <label class="check-inline">Şu tarihteki stok: <input type="date" class="date-in" id="stock-at" data-id="${p.id}" value="${r.at || todayISO()}" max="${todayISO()}"></label>
       ${r.stockAt !== null && r.stockAt !== undefined ? `<b class="stock-at">${num(r.stockAt)} ${esc(p.unit)}</b>` : ''}
     </div>
-    ${r.movements.length ? `<div class="table-wrap"><table>
+    ${r.movements.length ? `<div class="table-wrap"><table data-sort="pmoves">
       <thead><tr><th>Tarih</th><th>Tür</th><th class="r">Miktar</th><th class="r">Sonraki stok</th><th>Açıklama</th><th>Kaydeden</th></tr></thead>
-      <tbody>${r.movements.map(m => `<tr><td>${fmtDate(m.date)}<span class="sub">${fmtClock(m.createdAt)}</span></td><td>${esc(m.typeLabel)}${m.saleNo ? ` <span class="sub">${esc(m.saleNo)}</span>` : ''}</td>
-        <td class="r amt ${m.quantity >= 0 ? 'Gelir' : 'Gider'}">${m.quantity > 0 ? '+' : ''}${num(m.quantity)}</td><td class="r">${num(m.stockAfter)}</td><td class="wrap">${esc(m.note)}</td><td>${esc(m.createdBy)}</td></tr>`).join('')}</tbody></table></div>`
+      <tbody>${r.movements.map(m => `<tr><td data-v="${m.date} ${m.createdAt}">${fmtDate(m.date)}<span class="sub">${fmtClock(m.createdAt)}</span></td><td>${esc(m.typeLabel)}${m.saleNo ? ` <span class="sub">${esc(m.saleNo)}</span>` : ''}</td>
+        <td class="r amt ${m.quantity >= 0 ? 'Gelir' : 'Gider'}" data-v="${m.quantity}">${m.quantity > 0 ? '+' : ''}${num(m.quantity)}</td><td class="r" data-v="${m.stockAfter}">${num(m.stockAfter)}</td><td class="wrap">${esc(m.note)}</td><td>${esc(m.createdBy)}</td></tr>`).join('')}</tbody></table></div>`
       : emptyState('Bu ürün için hareket yok.')}
     <div class="form-actions"><button class="btn" data-action="adjust-stock" data-id="${p.id}">Fire / sayım / düzeltme</button><button class="btn primary" data-action="close-modal">Kapat</button></div>`, true);
 }
@@ -387,13 +387,13 @@ async function renderMovements() {
       ${kpi('Stok girişi', num(sumType('Giris')), 'hareket')}
       ${kpi('Fire / iade / düzeltme', num(sumType('Fire') + sumType('Iade') + sumType('Duzeltme') + sumType('Sayim')), 'hareket')}
     </div>
-    <div class="card flush">${list.length ? `<div class="table-wrap"><table>
+    <div class="card flush">${list.length ? `<div class="table-wrap"><table data-sort="moves">
       <thead><tr><th>Tarih</th><th>Ürün</th><th>Tür</th><th class="r">Miktar</th><th class="r">Sonraki stok</th><th>Açıklama</th><th>Kaydeden</th></tr></thead>
-      <tbody>${list.map(m => `<tr><td>${fmtDate(m.date)}<span class="sub">${fmtClock(m.createdAt)}</span></td>
+      <tbody>${list.map(m => `<tr><td data-v="${m.date} ${m.createdAt}">${fmtDate(m.date)}<span class="sub">${fmtClock(m.createdAt)}</span></td>
         <td><a href="#" data-action="product-moves" data-id="${m.productId}">${esc(m.product || '?')}</a></td>
         <td>${esc(m.typeLabel)}${m.saleNo ? `<span class="sub">${esc(m.saleNo)}</span>` : ''}</td>
-        <td class="r amt ${m.quantity >= 0 ? 'Gelir' : 'Gider'}">${m.quantity > 0 ? '+' : ''}${num(m.quantity)} ${esc(m.unit || '')}</td>
-        <td class="r">${num(m.stockAfter)}</td><td class="wrap">${esc(m.note)}</td><td>${esc(m.createdBy)}</td></tr>`).join('')}</tbody></table></div>`
+        <td class="r amt ${m.quantity >= 0 ? 'Gelir' : 'Gider'}" data-v="${m.quantity}">${m.quantity > 0 ? '+' : ''}${num(m.quantity)} ${esc(m.unit || '')}</td>
+        <td class="r" data-v="${m.stockAfter}">${num(m.stockAfter)}</td><td class="wrap">${esc(m.note)}</td><td>${esc(m.createdBy)}</td></tr>`).join('')}</tbody></table></div>`
       : emptyState('Bu dönemde hareket yok.')}</div>`;
 }
 

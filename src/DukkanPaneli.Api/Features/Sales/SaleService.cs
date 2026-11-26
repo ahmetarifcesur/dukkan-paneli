@@ -43,7 +43,9 @@ public sealed class SaleService(AppDb db)
             if (!products.TryGetValue(productId, out var p) || p.IsArchived) return OpResult.Fail("Sepetteki bir ürün bulunamadı; sayfayı yenileyin.");
             if (qty <= 0) return OpResult.Fail($"{p.Name}: miktar sıfırdan büyük olmalı.");
             if (qty > p.Stock) return OpResult.Fail($"Yetersiz stok: {p.Name} (mevcut {Format.Qty(p.Stock)} {p.Unit}, istenen {Format.Qty(qty)}).");
-            var unitPrice = MoneyMath.Round(price ?? p.Price);
+            // Fiyatı sadece sahip değiştirebilir. Arayüz çalışan için fiyat göndermez ama API'yi doğrudan
+            // çağıran biri gönderebilir; bu yüzden kural sunucuda: çalışanın gönderdiği fiyat yok sayılır.
+            var unitPrice = MoneyMath.Round(actor.IsOwner ? price ?? p.Price : p.Price);
             if (unitPrice < 0) return OpResult.Fail($"{p.Name}: fiyat negatif olamaz.");
 
             var lineTotal = MoneyMath.Round(qty * unitPrice);

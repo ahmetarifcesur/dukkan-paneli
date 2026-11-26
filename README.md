@@ -19,7 +19,7 @@ Küçük bir dükkanın sahibinin işlerini uzaktan takip etmesi için web uygul
 
 - **Backend:** C#, ASP.NET Core 10 Minimal API, Entity Framework Core 10 (migrations), SQLite
 - **Frontend:** HTML, CSS ve kütüphanesiz JavaScript; telefona kurulabilen PWA
-- **Test:** xUnit, 50 test (entegrasyon: `WebApplicationFactory` + geçici veritabanı; birim: saf fonksiyonlar ve bellek içi SQLite)
+- **Test:** xUnit, 55 test (entegrasyon: `WebApplicationFactory` + geçici veritabanı; birim: saf fonksiyonlar ve bellek içi SQLite)
 - **CI:** GitHub Actions; her push'ta derleme (uyarılar hata sayılır) ve testler çalışır
 
 ## Çalıştırma
@@ -121,8 +121,19 @@ geri alınması gereken işlemleri listeler. Geri alma da geçmişe yazılır ve
 - Şifreler ASP.NET Core Identity `PasswordHasher` (PBKDF2) ile saklanır.
 - Oturum çerezi `HttpOnly` ve `SameSite=Strict`. Şifre ya da rol değişince veya hesap kapatılınca açık oturumlar hemen düşer.
 - Değişiklik isteklerinde özel başlık zorunludur (CSRF koruması).
-- Giriş denemesi sınırı vardır: IP başına dakikada 10.
-- Güvenlik başlıkları gönderilir (CSP vb.).
+- Giriş, kurulum ve şifre değiştirme denemeleri sınırlıdır: IP başına dakikada 10.
+- Giriş yanıtının süresi, kullanıcı adının var olup olmadığını belli etmez.
+- Fiyatı sadece sahip değiştirebilir; çalışanın API'ye gönderdiği fiyat yok sayılır.
+- İlk kurulum yayında sadece sunucunun kendisinden ya da **kurulum anahtarıyla** (`Setup__Token`) yapılabilir; siteyi ilk açan yabancı sahip olamaz.
+- CSV dışa aktarımında formül gibi başlayan metinler etkisizleştirilir (CSV enjeksiyonu).
+- Güvenlik başlıkları gönderilir (CSP, Permissions-Policy, HSTS vb.).
+
+### Yayına alırken
+
+- **HTTPS zorunlu:** uygulamayı Caddy, nginx ya da Cloudflare Tunnel gibi bir ters vekilin (reverse proxy) arkasında çalıştırın.
+  Vekil aynı makinedeyse gerçek IP ve HTTPS bilgisi (`X-Forwarded-*`) otomatik kullanılır.
+- Kurulumu sunucuda yapmayacaksanız önce `Setup__Token` ortam değişkenini uzun, rastgele bir değerle tanımlayın.
+- `App_Data/` klasörü (veritabanı ve oturum anahtarları) kalıcı bir diskte olmalı ve düzenli yedeklenmeli.
 
 ## Uzaktan erişim
 

@@ -103,10 +103,13 @@ const actions = {
   'edit-tx': ds => { const t = findIn('cash', ds.id); if (t) txForm(t.type, t); },
   'del-tx': ds => { const t = findIn('cash', ds.id); if (t) confirmDialog(`${fmtDate(t.date)} tarihli ${money(t.amount)} tutarındaki ${t.type.toLowerCase()} kaydı silinsin mi? (İşlem Geçmişi'nden geri alınabilir)`, () => mutate('DELETE', `/api/cash/${t.id}`)); },
   'fin-type': ds => { ui.finType = ds.type; render(); },
+  // Excel, "=", "+", "-", "@" ile başlayan hücreyi formül sanar; kullanıcının yazdığı metin formül olarak
+  // çalışmasın diye başına ' ekliyoruz (CSV/formül enjeksiyonu).
   'export-csv': () => {
+    const csvText = s => (/^[=+\-@\t\r]/.test(s ?? '') ? `'${s}` : s);
     const list = filteredTx();
     if (!list.length) return toast('Dışa aktarılacak işlem yok.', 'error');
-    const rows = [['Tarih', 'Tür', 'Kategori', 'Açıklama', 'Tutar', 'KDV']].concat(list.map(t => [t.date, t.type, t.category, t.note, String(t.type === 'Gelir' ? t.amount : -t.amount).replace('.', ','), String(t.vatAmount || 0).replace('.', ',')]));
+    const rows = [['Tarih', 'Tür', 'Kategori', 'Açıklama', 'Tutar', 'KDV']].concat(list.map(t => [t.date, t.type, csvText(t.category), csvText(t.note), String(t.type === 'Gelir' ? t.amount : -t.amount).replace('.', ','), String(t.vatAmount || 0).replace('.', ',')]));
     const csv = rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
     const r = perRange('fin');
     const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
@@ -267,7 +270,7 @@ document.addEventListener('submit', async e => {
       await enterApp(true);
     } else if (f.id === 'setup-form') {
       if (v.password !== v.password2) return formError(f, 'Şifreler eşleşmiyor.');
-      await api('POST', '/api/auth/setup', { shopName: v.shopName, displayName: v.displayName, userName: v.userName, password: v.password, loadDemo: f.elements.loadDemo.checked });
+      await api('POST', '/api/auth/setup', { shopName: v.shopName, displayName: v.displayName, userName: v.userName, password: v.password, loadDemo: f.elements.loadDemo.checked, setupToken: v.setupToken || null });
       await enterApp(true);
     } else if (f.id === 'settings-form') {
       await mutate('PUT', '/api/settings', { shopName: v.shopName, defaultVatRate: Number(v.defaultVatRate) });

@@ -40,14 +40,14 @@ function renderFinance() {
 function finTable() {
   const list = filteredTx();
   if (!list.length) return emptyState('Bu filtreye uyan işlem yok.');
-  return `<div class="table-wrap"><table>
+  return `<div class="table-wrap"><table data-sort="fin">
     <thead><tr><th>Tarih</th><th>Tür</th><th>Kategori</th><th>Açıklama</th><th class="r">Tutar</th><th class="r">İşlem</th></tr></thead>
     <tbody>${list.map(t => `<tr>
-      <td>${fmtDate(t.date)}</td>
+      <td data-v="${t.date}">${fmtDate(t.date)}</td>
       <td><span class="pill ${t.type}">${t.type}</span></td>
       <td>${esc(t.category)}</td>
       <td class="muted wrap">${esc(t.note)}${t.createdBy ? `<span class="sub">${esc(t.createdBy)}</span>` : ''}</td>
-      <td class="r amt ${t.type}">${t.type === 'Gelir' ? '+' : '−'}${money(t.amount)}${t.vatAmount ? `<span class="sub">KDV ${money(t.vatAmount)}</span>` : ''}</td>
+      <td class="r amt ${t.type}" data-v="${t.type === 'Gelir' ? t.amount : -t.amount}">${t.type === 'Gelir' ? '+' : '−'}${money(t.amount)}${t.vatAmount ? `<span class="sub">KDV ${money(t.vatAmount)}</span>` : ''}</td>
       <td class="r actions">${t.linked
         ? `${t.saleId ? iconBtn('show-receipt', t.saleId, ICON.receipt, 'Fişi göster') : ''}<span class="lock" title="${esc(LINK_HINT)}">${ICON.lock}</span>`
         : iconBtn('edit-tx', t.id, ICON.edit, 'Düzenle') + iconBtn('del-tx', t.id, ICON.trash, 'Sil', 'del')}</td>
@@ -65,12 +65,12 @@ function renderSuppliers() {
       <td><b>${esc(s.name)}</b>${s.note ? `<span class="sub">${esc(s.note)}</span>` : ''}</td>
       <td>${s.phone ? `<a href="tel:${esc(s.phone.replace(/[^\d+]/g, ''))}">${esc(s.phone)}</a>` : '—'}${s.email ? `<span class="sub"><a href="mailto:${esc(s.email)}">${esc(s.email)}</a></span>` : ''}</td>
       <td class="wrap">${prods.length ? esc(prods.map(p => p.name).join(', ')) : '<span class="muted">—</span>'}${lowCount ? ` <span class="pill warn">${lowCount} kritik</span>` : ''}</td>
-      <td class="r">${debt ? `<b class="amt Gider">${money(debt)}</b>` : '<span class="muted">Borç yok</span>'}</td>
+      <td class="r" data-v="${debt}">${debt ? `<b class="amt Gider">${money(debt)}</b>` : '<span class="muted">Borç yok</span>'}</td>
       <td class="r actions">${iconBtn('edit-supplier', s.id, ICON.edit, 'Düzenle')}${iconBtn('del-supplier', s.id, ICON.trash, 'Sil', 'del')}</td></tr>`;
   }).join('');
   return `
     <div class="toolbar"><span class="muted">${ss.length} tedarikçi · toplam borç ${money(sumBy(ss, debtOf))}</span><span class="spacer"></span><button class="btn primary" data-action="add-supplier">+ Tedarikçi ekle</button></div>
-    <div class="card flush">${ss.length ? `<div class="table-wrap"><table>
+    <div class="card flush">${ss.length ? `<div class="table-wrap"><table data-sort="suppliers">
       <thead><tr><th>Tedarikçi</th><th>İletişim</th><th>Sağladığı ürünler</th><th class="r">Açık borç</th><th class="r">İşlem</th></tr></thead>
       <tbody>${rows}</tbody></table></div>` : emptyState('Henüz tedarikçi eklenmedi.')}</div>`;
 }
@@ -107,17 +107,17 @@ function renderDebts() {
       ${kpi('30 gün içinde vadesi gelen', money(sumBy(in30, d => d.remaining)), `${in30.length} kayıt`)}
       ${kpi(isB ? 'Bugüne kadar ödenen' : 'Bugüne kadar tahsil edilen', money(sumBy(all, d => d.paid)), `Toplam ${money(sumBy(all, d => d.amount))} üzerinden`)}
     </div>
-    <div class="card flush">${list.length ? `<div class="table-wrap"><table>
+    <div class="card flush">${list.length ? `<div class="table-wrap"><table data-sort="debts">
       <thead><tr><th>${isB ? 'Alacaklı' : 'Borçlu'}</th><th>Kayıt</th><th>Vade</th><th class="r">Tutar</th><th class="r">${isB ? 'Ödenen' : 'Tahsil edilen'}</th><th>Kalan</th><th>Durum</th><th class="r">İşlem</th></tr></thead>
       <tbody>${list.map(d => {
         const ratio = d.amount ? Math.min(100, (d.paid / d.amount) * 100) : 0;
         return `<tr>
           <td><b>${esc(d.party)}</b>${d.saleNo ? ` <span class="pill">${esc(d.saleNo)}</span>` : ''}${d.note ? `<span class="sub">${esc(d.note)}</span>` : ''}</td>
-          <td>${fmtDate(d.date)}</td><td>${fmtDate(d.dueDate)}</td>
-          <td class="r">${money(d.amount)}</td>
-          <td class="r">${money(d.paid)}${d.payments.length ? `<span class="sub"><a href="#" data-action="debt-payments" data-id="${d.id}">${d.payments.length} ödeme</a></span>` : ''}</td>
-          <td><div class="meter"><div class="meter-track"><div class="meter-fill" style="width:${ratio.toFixed(1)}%"></div></div><small><b>${money(d.remaining)}</b></small></div></td>
-          <td>${debtStatus(d)}</td>
+          <td data-v="${d.date}">${fmtDate(d.date)}</td><td data-v="${d.dueDate || ''}">${fmtDate(d.dueDate)}</td>
+          <td class="r" data-v="${d.amount}">${money(d.amount)}</td>
+          <td class="r" data-v="${d.paid}">${money(d.paid)}${d.payments.length ? `<span class="sub"><a href="#" data-action="debt-payments" data-id="${d.id}">${d.payments.length} ödeme</a></span>` : ''}</td>
+          <td data-v="${d.remaining}"><div class="meter"><div class="meter-track"><div class="meter-fill" style="width:${ratio.toFixed(1)}%"></div></div><small><b>${money(d.remaining)}</b></small></div></td>
+          <td data-v="${d.remaining <= 0 ? 1e6 : d.dueDate ? daysBetween(todayISO(), d.dueDate) : 1e5}">${debtStatus(d)}</td>
           <td class="r actions">
             ${d.remaining > 0 ? `<button class="btn sm" data-action="pay-debt" data-id="${d.id}">${isB ? 'Öde' : 'Tahsil et'}</button>` : ''}
             ${iconBtn('edit-debt', d.id, ICON.edit, 'Düzenle')}
@@ -130,8 +130,8 @@ function showDebtPayments(id) {
   if (!d) return;
   openPanel(`Ödemeler: ${d.party}`, `
     <p class="muted">Toplam ${money(d.amount)}${d.openingPaid ? ` · Önceden ödenen ${money(d.openingPaid)}` : ''} · Kalan <b>${money(d.remaining)}</b></p>
-    ${d.payments.length ? `<div class="table-wrap"><table><thead><tr><th>Tarih</th><th class="r">Tutar</th><th>Kaydeden</th><th class="r"></th></tr></thead>
-      <tbody>${d.payments.map(p => `<tr><td>${fmtDate(p.date)}</td><td class="r">${money(p.amount)}</td><td>${esc(p.createdBy)}</td>
+    ${d.payments.length ? `<div class="table-wrap"><table data-sort="payments"><thead><tr><th>Tarih</th><th class="r">Tutar</th><th>Kaydeden</th><th class="r"></th></tr></thead>
+      <tbody>${d.payments.map(p => `<tr><td data-v="${p.date}">${fmtDate(p.date)}</td><td class="r" data-v="${p.amount}">${money(p.amount)}</td><td>${esc(p.createdBy)}</td>
         <td class="r"><button class="btn sm danger-soft" data-action="del-payment" data-debt="${d.id}" data-id="${p.id}">İptal et</button></td></tr>`).join('')}</tbody></table></div>`
       : emptyState('Ödeme yok.')}
     <div class="form-actions"><button class="btn primary" data-action="close-modal">Kapat</button></div>`);
@@ -165,8 +165,8 @@ async function renderReports() {
         <div class="legend"><span><i style="background:var(--income)"></i>Gelir</span><span><i style="background:var(--expense)"></i>Gider</span></div></div>
         ${barChart(daily, false)}</div>
       <div class="card"><h3>En çok satan ürünler</h3>
-        ${r.topProducts.length ? `<div class="table-wrap"><table class="compact"><thead><tr><th>Ürün</th><th class="r">Miktar</th><th class="r">Ciro</th><th class="r">Kâr</th></tr></thead>
-          <tbody>${r.topProducts.map((p, i) => `<tr><td>${i + 1}. ${esc(p.name)}</td><td class="r">${num(p.quantity)} ${esc(p.unit)}</td><td class="r">${money(p.revenue)}</td><td class="r">${money(p.profit)}</td></tr>`).join('')}</tbody></table></div>`
+        ${r.topProducts.length ? `<div class="table-wrap"><table class="compact" data-sort="top"><thead><tr><th>Ürün</th><th class="r">Miktar</th><th class="r">Ciro</th><th class="r">Kâr</th></tr></thead>
+          <tbody>${r.topProducts.map((p, i) => `<tr><td data-v="${esc(p.name)}">${i + 1}. ${esc(p.name)}</td><td class="r" data-v="${p.quantity}">${num(p.quantity)} ${esc(p.unit)}</td><td class="r" data-v="${p.revenue}">${money(p.revenue)}</td><td class="r" data-v="${p.profit}">${money(p.profit)}</td></tr>`).join('')}</tbody></table></div>`
           : emptyState('Bu dönemde satış yok.')}</div>
     </div>
     <div class="grid-3">

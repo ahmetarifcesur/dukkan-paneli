@@ -296,7 +296,7 @@ function showLogin(message, shopName) {
       <button class="btn primary block full" type="submit">Giriş yap</button>
     </form>`);
 }
-function showSetup() {
+function showSetup(tokenRequired = false) {
   showAuth(`${LOGO}<h1>Dükkan Paneli kurulumu</h1><p>İlk kez açılıyor. Dükkan sahibi hesabını oluşturun; çalışan hesaplarını sonra Ayarlar'dan ekleyebilirsiniz.</p>
     <form id="setup-form" class="form-grid" novalidate>
       <label class="field full"><span>Dükkan adı</span><input name="shopName" maxlength="60" required placeholder="ör. Merkez Şarküteri"></label>
@@ -304,6 +304,7 @@ function showSetup() {
       <label class="field full"><span>Kullanıcı adı</span><input name="userName" maxlength="32" autocomplete="username" autocapitalize="none" required><small>Küçük harf, rakam, nokta, tire (3-32 karakter)</small></label>
       <label class="field full"><span>Şifre</span><input name="password" type="password" autocomplete="new-password" required><small>En az 8 karakter</small></label>
       <label class="field full"><span>Şifre (tekrar)</span><input name="password2" type="password" autocomplete="new-password" required></label>
+      ${tokenRequired ? '<label class="field full"><span>Kurulum anahtarı</span><input name="setupToken" type="password" autocomplete="off" required><small>Sunucuda Setup__Token ile tanımlanan anahtar</small></label>' : ''}
       <label class="field full check"><input type="checkbox" name="loadDemo" checked><span>Denemek için örnek verileri yükle</span></label>
       <p class="form-error full" hidden></p>
       <button class="btn primary block full" type="submit">Kurulumu tamamla</button>
@@ -323,7 +324,7 @@ async function enterApp(goHome = false) {
 async function boot() {
   try {
     const st = await api('GET', '/api/auth/status');
-    if (st.needsSetup) return showSetup();
+    if (st.needsSetup) return showSetup(st.setupTokenRequired);
     if (!st.user) return showLogin('', st.shopName);
     await enterApp();
   } catch (e) {
@@ -452,3 +453,73 @@ function printHTML(html) {
   window.addEventListener('afterprint', done);
   window.print();
 }
+
+/* ---------- Sıralanabilir tablolar ----------
+   <table data-sort="anahtar"> olan tablolarda sütun başlığına tıklayınca satırlar sıralanır:
+   artan → azalan → ilk sıra. Hücrede data-v varsa ona göre (sayı ya da ISO tarih), yoksa görünen
+   metne göre sıralar. Seçim ui.sort'ta tutulur; ekran yeniden çizilince aynı sıralama uygulanır. */
+ui.sort = {};
+const NO_SORT = new Set(['', 'İşlem']);
+
+function sortValue(td) {
+  if (!td) return '';
+  if ('v' in td.dataset) {
+    const v = td.dataset.v, n = Number(v);
+    return v !== '' && Number.isFinite(n) ? n : v;
+  }
+  const c = td.cloneNode(true);
+  c.querySelectorAll('.sub').forEach(x => x.remove());
+  const t = c.textContent.trim();
+  return t === '—' ? '' : t;
+}
+function compareValues(a, b) {
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return String(a).localeCompare(String(b), 'tr', { numeric: true, sensitivity: 'base' });
+}
+
+function applySort(table) {
+  const s = ui.sort[table.dataset.sort];
+  table.querySelectorAll('thead th').forEach((th, i) => {
+    if (!th.classList.contains('sortable')) return;
+    const dir = s && s.col === i ? s.dir : 0;
+    th.setAttribute('aria-sort', dir > 0 ? 'ascending' : dir < 0 ? 'descending' : 'none');
+  });
+  const body = table.tBodies[0];
+  if (!body) return;
+  // İlk sırayı satırlara yaz; "sıralamayı kaldır" ve eşit değerler için kullanılır.
+  const rows = [...body.rows].map((r, i) => {
+    if (!('i' in r.dataset)) r.dataset.i = i;
+    return { r, i: Number(r.dataset.i), v: s ? sortValue(r.cells[s.col]) : '' };
+  });
+  rows.sort((a, b) => {
+    if (!s) return a.i - b.i;
+    const ea = a.v === '', eb = b.v === '';
+    if (ea !== eb) return ea ? 1 : -1; // boş değerler yönden bağımsız hep sonda
+    return (ea ? 0 : compareValues(a.v, b.v) * s.dir) || a.i - b.i;
+  });
+  body.append(...rows.map(x => x.r));
+}
+
+// Yeni çizilen tabloların başlıklarını tıklanabilir yapar ve kayıtlı sıralamayı uygular.
+function enhanceTables(root) {
+  root.querySelectorAll('table[data-sort]:not([data-ready])').forEach(table => {
+    table.dataset.ready = '1';
+    table.querySelectorAll('thead th').forEach((th, i) => {
+      if (NO_SORT.has(th.textContent.trim()) || th.classList.contains('nosort')) return;
+      th.classList.add('sortable');
+      th.innerHTML = `<button type="button" class="th-sort" data-col="${i}">${th.innerHTML}<span class="sort-ind" aria-hidden="true"></span></button>`;
+    });
+    applySort(table);
+  });
+}
+new MutationObserver(() => enhanceTables(document.body)).observe(document.body, { childList: true, subtree: true });
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.th-sort');
+  if (!btn) return;
+  const table = btn.closest('table'), key = table.dataset.sort, col = Number(btn.dataset.col);
+  const cur = ui.sort[key];
+  // artan → azalan → kaldır
+  ui.sort[key] = !cur || cur.col !== col ? { col, dir: 1 } : cur.dir === 1 ? { col, dir: -1 } : undefined;
+  applySort(table);
+});

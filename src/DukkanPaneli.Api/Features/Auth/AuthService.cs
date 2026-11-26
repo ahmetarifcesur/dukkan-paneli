@@ -16,6 +16,9 @@ public sealed partial class AuthService(AppDb db, IPasswordHasher<User> hasher, 
     [GeneratedRegex("^[a-z0-9._-]{3,32}$")]
     private static partial Regex UserNamePattern();
 
+    private static readonly User DummyUser = new();
+    private static readonly string DummyHash = new PasswordHasher<User>().HashPassword(DummyUser, Guid.NewGuid().ToString());
+
     public static string NormalizeUserName(string? name) => (name ?? "").Trim().ToLowerInvariant();
 
     public static string? ValidateUserName(string userName) => UserNamePattern().IsMatch(userName)
@@ -67,9 +70,10 @@ public sealed partial class AuthService(AppDb db, IPasswordHasher<User> hasher, 
     {
         var userName = NormalizeUserName(req.UserName);
         var user = await db.Users.FirstOrDefaultAsync(x => x.UserName == userName);
-        var check = user is null
-            ? PasswordVerificationResult.Failed
-            : hasher.VerifyHashedPassword(user, user.PasswordHash, req.Password ?? "");
+        // Kullanıcı yoksa da sahte bir özetle doğrulama yapıyoruz. Yoksa "yok" cevabı çok hızlı döner ve
+        // saldırgan yanıt süresinden hangi kullanıcı adlarının var olduğunu anlayabilir (zamanlama saldırısı).
+        var check = hasher.VerifyHashedPassword(user ?? DummyUser, user?.PasswordHash ?? DummyHash, req.Password ?? "");
+        if (user is null) check = PasswordVerificationResult.Failed;
 
         // Kullanıcı adı mı yanlış, şifre mi? Bilerek söylemiyoruz: saldırgana hangi adların var olduğunu göstermemek için.
         if (user is null || check == PasswordVerificationResult.Failed)
