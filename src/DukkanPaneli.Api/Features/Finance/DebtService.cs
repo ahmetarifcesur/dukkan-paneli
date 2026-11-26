@@ -40,17 +40,21 @@ public sealed class DebtService(AppDb db)
         var party = Input.Clean(r.Party, 80);
         if (party.Length == 0) return OpResult.Fail("Kişi / firma adı gerekli.");
         if (r.Amount is not > 0) return OpResult.Fail("Tutar sıfırdan büyük olmalı.");
-        if (d.IsLinked && (r.Amount != d.Amount || r.Kind != d.Kind))
+        var amount = MoneyMath.Round(r.Amount.Value);
+        if (d.IsLinked && (amount != d.Amount || r.Kind != d.Kind))
             return OpResult.Fail("Bu kayıt bir satış/stok girişine bağlı; tutarı ve türü değiştirilemez.");
+        // Ödemeler kasaya türüne göre gider/gelir olarak yazıldı; tür değişirse bu kayıtlar ters düşer.
+        if (r.Kind != d.Kind && d.Payments.Count > 0)
+            return OpResult.Fail("Ödemesi olan kaydın türü (borç/alacak) değiştirilemez. Önce ödemeleri iptal edin.");
         var opening = r.OpeningPaid ?? d.OpeningPaid;
         if (opening < 0) return OpResult.Fail("Ödenmiş kısım negatif olamaz.");
-        if (opening + d.Payments.Sum(p => p.Amount) > r.Amount) return OpResult.Fail("Ödenen toplam, tutardan büyük olamaz.");
+        if (opening + d.Payments.Sum(p => p.Amount) > amount) return OpResult.Fail("Ödenen toplam, tutardan büyük olamaz.");
         var date = r.Date ?? d.Date;
         if (r.DueDate is { } due && due < date) return OpResult.Fail("Vade tarihi kayıt tarihinden önce olamaz.");
 
         d.Kind = r.Kind;
         d.Party = party;
-        d.Amount = MoneyMath.Round(r.Amount.Value);
+        d.Amount = amount;
         d.OpeningPaid = MoneyMath.Round(opening);
         d.Date = date;
         d.DueDate = r.DueDate;
@@ -121,6 +125,6 @@ public sealed class DebtService(AppDb db)
 
     private Task<Debt?> LoadAsync(int id) => db.Debts.Include(x => x.Payments).FirstOrDefaultAsync(x => x.Id == id);
 
-    private Task<Supplier?> FindSupplierAsync(string name) =>
-        db.Suppliers.FirstOrDefaultAsync(s => !s.IsArchived && s.Name.ToLower() == name.ToLower());
+    private async Task<Supplier?> FindSupplierAsync(string name) =>
+        (await db.Suppliers.AsNoTracking().Where(s => !s.IsArchived).ToListAsync()).FirstOrDefault(s => Input.SameText(s.Name, name));
 }

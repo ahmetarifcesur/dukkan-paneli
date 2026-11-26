@@ -8,8 +8,8 @@ public static class DashboardEndpoints
     {
         var api = app.MapGroup("/api").RequireAuthorization();
 
-        api.MapGet("/bootstrap", async (HttpContext ctx, DashboardService svc) =>
-            Results.Ok(await svc.BootstrapAsync(Actor.From(ctx.User))));
+        api.MapGet("/bootstrap", async (DateOnly? cashFrom, HttpContext ctx, DashboardService svc) =>
+            Results.Ok(await svc.BootstrapAsync(Actor.From(ctx.User), cashFrom)));
 
         api.MapGet("/notifications", async (HttpContext ctx, DashboardService svc) =>
             Results.Ok(await svc.NotificationsAsync(Actor.From(ctx.User))));

@@ -19,6 +19,7 @@ public sealed class SaleService(AppDb db)
         if (r.Lines is not { Count: > 0 }) return OpResult.Fail("Sepet boş.");
         var date = r.Date ?? Clock.Today;
         if (!actor.IsOwner && date != Clock.Today) return OpResult.Fail("Çalışanlar sadece bugünün tarihine satış girebilir.");
+        if (date > Clock.Today) return OpResult.Fail("İleri bir tarihe satış girilemez.");
         var customer = Input.Clean(r.Customer, 60);
         var onCredit = r.PaymentType == PaymentType.OnCredit;
         if (onCredit && customer.Length == 0) return OpResult.Fail("Veresiye satış için müşteri adı girin.");

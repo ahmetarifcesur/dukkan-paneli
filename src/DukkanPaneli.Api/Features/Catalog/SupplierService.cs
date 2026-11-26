@@ -51,6 +51,7 @@ public sealed class SupplierService(AppDb db)
         return OpResult.Ok(log);
     }
 
-    private Task<bool> NameTakenAsync(string name, int? exceptId) =>
-        db.Suppliers.AnyAsync(s => s.Id != exceptId && !s.IsArchived && s.Name.ToLower() == name.ToLower());
+    private async Task<bool> NameTakenAsync(string name, int? exceptId) =>
+        (await db.Suppliers.Where(s => s.Id != exceptId && !s.IsArchived).Select(s => s.Name).ToListAsync())
+            .Any(n => Input.SameText(n, name));
 }

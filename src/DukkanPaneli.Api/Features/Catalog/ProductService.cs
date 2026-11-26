@@ -93,8 +93,9 @@ public sealed class ProductService(AppDb db)
         return null;
     }
 
-    private Task<bool> NameTakenAsync(string name, int? exceptId) =>
-        db.Products.AnyAsync(p => p.Id != exceptId && !p.IsArchived && p.Name.ToLower() == name.ToLower());
+    private async Task<bool> NameTakenAsync(string name, int? exceptId) =>
+        (await db.Products.Where(p => p.Id != exceptId && !p.IsArchived).Select(p => p.Name).ToListAsync())
+            .Any(n => Input.SameText(n, name));
 
     private Task<bool> SupplierExistsAsync(int id) => db.Suppliers.AnyAsync(s => s.Id == id && !s.IsArchived);
 }

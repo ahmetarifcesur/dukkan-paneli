@@ -75,13 +75,13 @@ function stockInForm(p) {
       { name: 'quantity', label: `Miktar (${p.unit})`, type: 'number', min: 0.01, max: free, step: 'any', value: free ? Math.min(free, Math.max(1, round2(p.capacity * 0.5 - p.stock))) : '' },
       owner ? { name: 'unitCost', label: 'Birim alış fiyatı (₺)', type: 'number', min: 0, step: '0.01', value: p.cost } : { type: 'info', html: 'Alış fiyatı olarak ürünün kayıtlı maliyeti kullanılır.' },
       { name: 'supplierId', label: 'Tedarikçi', type: 'select', options: supplierOptions(), value: p.supplierId ?? '' },
-      { name: 'date', label: 'Tarih', type: 'date', value: todayISO() },
+      owner ? { name: 'date', label: 'Tarih', type: 'date', value: todayISO(), max: todayISO() } : null,
       ...(owner ? [
         { name: 'credit', label: 'Vadeli / veresiye alım (tedarikçiye borç yaz, kasadan para çıkmaz)', type: 'checkbox', value: false },
         { name: 'dueDate', label: 'Vade tarihi', type: 'date', value: toISO(addDays(new Date(), 30)), hidden: true },
       ] : []),
       { name: 'note', label: 'Not', value: '', full: true, maxlength: 120, placeholder: 'ör. irsaliye no' },
-    ],
+    ].filter(Boolean),
     onChange: form => { if (form.elements.credit) toggleField(form, 'dueDate', form.elements.credit.checked); },
     onSubmit: async v => {
       if (!(v.quantity > 0)) return 'Miktar sıfırdan büyük olmalı.';
@@ -108,9 +108,9 @@ function adjustForm(p) {
       { type: 'info', html: `Mevcut stok: <b>${num(p.stock)} ${esc(p.unit)}</b> · Kapasite: ${num(p.capacity)}` },
       { name: 'type', label: 'İşlem', type: 'select', options: Object.keys(labels).map(k => ({ value: k, label: MOVE_TYPES[k] })), value: 'Fire', full: true },
       { name: 'quantity', label: labels.Fire, type: 'number', step: 'any', value: '' },
-      { name: 'date', label: 'Tarih', type: 'date', value: todayISO() },
+      isOwner() ? { name: 'date', label: 'Tarih', type: 'date', value: todayISO(), max: todayISO() } : null,
       { name: 'note', label: 'Açıklama', value: '', full: true, maxlength: 120 },
-    ],
+    ].filter(Boolean),
     onChange: (form, e) => {
       const t = form.elements.type.value;
       form.querySelector('[data-field="quantity"] > span').textContent = labels[t];

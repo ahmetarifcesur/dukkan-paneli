@@ -11,9 +11,13 @@ namespace DukkanPaneli.Api.Features.Dashboard;
 
 public sealed record ShopSettingsDto(string ShopName, decimal DefaultVatRate);
 
-/// <summary>Arayüzün açılışta tek istekte aldığı veriler. Cash ve Debts çalışan için null'dur.</summary>
+/// <summary>
+/// Arayüzün açılışta (ve her değişiklikten sonra) tek istekte aldığı veriler. Cash ve Debts çalışan için null'dur.
+/// Cash sadece <see cref="CashFrom"/> tarihinden sonraki kayıtları içerir; daha eski bir dönem açılınca
+/// arayüz "?cashFrom=" ile pencereyi genişletir. Böylece yıllar geçtikçe yanıt büyümez.
+/// </summary>
 public sealed record BootstrapDto(MeDto Me, ShopSettingsDto Settings, IEnumerable<ProductDto> Products, IEnumerable<SupplierDto> Suppliers,
-    List<CalendarEvent> Events, List<CashDto>? Cash, List<DebtDto>? Debts);
+    List<CalendarEvent> Events, List<CashDto>? Cash, DateOnly CashFrom, List<DebtDto>? Debts);
 
 /// <param name="Key">Aynı bildirimi iki kez göstermemek için tarayıcı bu anahtarı hatırlar.</param>
 /// <param name="Level">info / warn / danger</param>
@@ -22,8 +26,13 @@ public sealed record NotificationDto(string Key, string Level, string Title, str
 
 public sealed class DashboardService(AppDb db, CalendarService calendar, CashService cash, DebtService debts)
 {
-    public async Task<BootstrapDto> BootstrapAsync(Actor actor)
+    /// <summary>Varsayılan gelir-gider penceresi: 12 ay önceki ayın ilk günü (genel bakış ve geçen yılla karşılaştırma için yeterli).</summary>
+    public static DateOnly DefaultCashFrom(DateOnly today) => new DateOnly(today.Year, today.Month, 1).AddMonths(-12);
+
+    public async Task<BootstrapDto> BootstrapAsync(Actor actor, DateOnly? cashFrom = null)
     {
+        var defaultFrom = DefaultCashFrom(Clock.Today);
+        var from = cashFrom is { } f && f < defaultFrom ? f : defaultFrom;
         var me = await db.Users.AsNoTracking().Where(u => u.Id == actor.Id).Select(u => MeDto.From(u)).FirstAsync();
         var settings = await db.ReadSettingsAsync();
         var products = await db.Products.AsNoTracking().Where(p => !p.IsArchived).OrderBy(p => p.Name).ToListAsync();
@@ -37,7 +46,8 @@ public sealed class DashboardService(AppDb db, CalendarService calendar, CashSer
             products.Select(p => ProductDto.From(p, showCost: actor.IsOwner)),
             suppliers.Select(SupplierDto.From),
             await calendar.ListAsync(),
-            actor.IsOwner ? await cash.ListAsync() : null,
+            actor.IsOwner ? await cash.ListAsync(from) : null,
+            from,
             actor.IsOwner ? await debts.ListAsync() : null);
     }
 

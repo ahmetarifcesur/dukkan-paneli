@@ -18,7 +18,9 @@ public sealed class StockService(AppDb db)
         if (r.Quantity is not > 0) return OpResult.Fail("Miktar sıfırdan büyük olmalı.");
         var free = p.Capacity - p.Stock;
         if (r.Quantity > free) return OpResult.Fail($"Kapasite aşılıyor: en fazla {Format.Qty(Math.Max(0, free))} {p.Unit} eklenebilir.");
-        var unitCost = r.UnitCost ?? p.Cost;
+        // Maliyet ve vadeli alım sahibin bilgisi/kararı: arayüz çalışana bu alanları göstermez, sunucu da kabul etmez.
+        if (!actor.IsOwner && r.Credit) return OpResult.Fail("Vadeli alımı sadece dükkan sahibi girebilir.", StatusCodes.Status403Forbidden);
+        var unitCost = actor.IsOwner ? r.UnitCost ?? p.Cost : p.Cost;
         if (unitCost < 0) return OpResult.Fail("Alış fiyatı negatif olamaz.");
 
         Supplier? supplier = null;
@@ -28,6 +30,7 @@ public sealed class StockService(AppDb db)
             if (supplier is null) return OpResult.Fail("Tedarikçi bulunamadı.");
         }
         if (r.Credit && supplier is null) return OpResult.Fail("Vadeli alım için tedarikçi seçin.");
+        if (CheckDate(actor, r.Date) is { } dateError) return OpResult.Fail(dateError);
         var date = r.Date ?? Clock.Today;
         if (r.Credit && r.DueDate is { } due && due < date) return OpResult.Fail("Vade tarihi alım tarihinden önce olamaz.");
 
@@ -72,6 +75,7 @@ public sealed class StockService(AppDb db)
         var p = await db.Products.FindAsync(productId);
         if (p is null || p.IsArchived) return OpResult.NotFound("Ürün bulunamadı.");
         if (r.Quantity is not { } q) return OpResult.Fail("Miktar gerekli.");
+        if (CheckDate(actor, r.Date) is { } dateError) return OpResult.Fail(dateError);
 
         // Her tür için stoğa eklenecek işaretli fark (delta).
         decimal? delta = r.Type switch
@@ -103,6 +107,18 @@ public sealed class StockService(AppDb db)
             () => $"{Format.Label(r.Type)}: {p.Name} {(d > 0 ? "+" : "")}{Format.Qty(d)} {p.Unit} (yeni stok {Format.Qty(newStock)})");
         return OpResult.Ok(log);
     }
+
+    /// <summary>
+    /// Tarih kuralı (satıştaki ile aynı): çalışan sadece bugüne kayıt girer; kimse ileri tarihe giremez,
+    /// çünkü gelecekteki bir hareket "şu tarihteki stok" hesabını bozar.
+    /// </summary>
+    private static string? CheckDate(Actor actor, DateOnly? date) => date switch
+    {
+        null => null,
+        { } d when d > Clock.Today => "İleri bir tarihe stok hareketi girilemez.",
+        { } d when !actor.IsOwner && d != Clock.Today => "Çalışanlar sadece bugünün tarihine stok hareketi girebilir.",
+        _ => null,
+    };
 
     /// <summary>
     /// Ürünün hareket geçmişi. <paramref name="at"/> verilirse o günün sonundaki stok da hesaplanır:

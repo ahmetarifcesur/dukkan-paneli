@@ -17,8 +17,9 @@ public sealed class CashService(AppDb db)
         : c.StockMovementId is not null ? "Bu kayıt bir stok girişinden oluştu. Geçmiş ekranından stok girişini geri alın."
         : null;
 
-    public Task<List<CashDto>> ListAsync() =>
+    public Task<List<CashDto>> ListAsync(DateOnly from) =>
         db.CashEntries.AsNoTracking()
+            .Where(c => c.Date >= from)
             .OrderByDescending(c => c.Date).ThenByDescending(c => c.Id)
             .Select(c => new CashDto(c.Id, c.Type, c.Amount, c.VatAmount, c.Category, c.Date, c.Note, c.CreatedBy, c.SaleId,
                 c.SaleId != null || c.DebtPaymentId != null || c.StockMovementId != null))
